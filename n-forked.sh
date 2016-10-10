@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TRACK=nougat-release
+TRACK=nougat-mr0.5-release
 BRANCH=aosp-7.0; CANARY=build
 FETCH=https://android.googlesource.com
 
