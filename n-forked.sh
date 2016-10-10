@@ -6,11 +6,26 @@ FETCH=https://android.googlesource.com
 
 SAUCE=~/android/$BRANCH; cd $SAUCE	# or whatever location
 
-OLDTAG=`git -C $CANARY describe --tag aosp/$TRACK`
-git -C $CANARY fetch $FETCH/platform/$CANARY $TRACK && \
+git -C $CANARY fetch -q $FETCH/platform/$CANARY $TRACK && \
 NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 
-# Show OLD/NEWTAG here & prompt to continue…
+findtags() {
+	OLDTAG=`git -C $1 describe --tag --abbrev=0 $BRANCH`
+}
+
+findtags $CANARY
+
+if [ "$NEWTAG" = "$OLDTAG" ]; then
+	read -p "Seems like $CANARY is onto latest tag ($NEWTAG). Continue? (y/N) " prompt
+	if [ "$prompt" != "y" ]; then
+		exit 0
+	fi
+else
+	read -p "Found $OLDTAG in $CANARY; newest is $NEWTAG. Continue? (y/N) " prompt
+	if [ "$prompt" != "y" ]; then
+		exit 0
+	fi
+fi
 
 AOSP_FORKS="build bionic system/core
 			frameworks/av frameworks/base frameworks/native
@@ -19,28 +34,38 @@ AOSP_FORKS="build bionic system/core
 			hardware/qcom/gps hardware/qcom/keymaster
 			hardware/qcom/media hardware/qcom/wlan"
 
-for r in $AOSP_FORKS
-do
-	echo $r
-	git -C $r fetch $FETCH/platform/$r $TRACK && \
-	git -C $r rebase --onto $NEWTAG $OLDTAG $BRANCH
-done
+forkrebase() {
+	for r in $AOSP_FORKS; do
+		findtags $r
+		if [ "$NEWTAG" != "$OLDTAG" ]; then
+			echo "Rebasing $r onto $NEWTAG (from $OLDTAG)"
+			git -C $r rebase --onto $NEWTAG $OLDTAG $BRANCH
+		else
+			echo "Seems like $r is rebased onto latest tag already."
+		fi
+	done
+}
 
-GERRIT=gerrit.unlegacy-android.cf:29418
-PJROOT=Unlegacy-Android; $USER=???
-UA=ssh://$USER@$GERRIT/$PJROOT
+forkrebase
+
+#GERRIT=gerrit.unlegacy-android.cf:29418; $USER=???
+#Actually, better create a remote in ~/.ssh/config:
+#Host ul
+#    Port 29418
+#    User ???
+#    HostName gerrit.unlegacy-android.cf
+
+PJROOT=Unlegacy-Android; #UA=ssh://$USER@$GERRIT/$PJROOT
 
 forkpush() {
-	for r in $AOSP_FORKS
-	do
+	for r in $AOSP_FORKS; do
 		f=android_`echo $r| tr / _`; echo $f
-		git -C $r push $UA/$f $BRANCH:refs/heads/$BRANCH
+		git -C $r push ul:$PJROOT/$f $BRANCH:refs/heads/$BRANCH -f
 	done
 }
 
 forkstatus() {
-	for r in $AOSP_FORKS
-	do
+	for r in $AOSP_FORKS; do
 		git -C $r status -bs; echo $r
 	done
 }
