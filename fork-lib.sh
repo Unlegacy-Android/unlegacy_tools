@@ -3,10 +3,16 @@
 FETCH=https://android.googlesource.com; CANARY=build
 SAUCE=~/android/$BRANCH; cd $SAUCE	# or whatever location
 
-git -C $CANARY fetch -q $FETCH/platform/$CANARY $TRACK && \
-NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
+fetchtags() {
+	git -C $1 fetch -qt $FETCH/platform/$1 $TRACK
+}
+
+fetchtags $CANARY && NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 
 findtags() {
+	if [ !`git -C $1 branch --list $BRANCH` ]; then
+		git -C $1 checkout -q $BRANCH && echo "Branch $BRANCH doesn't exist locally; creating it from remote"
+	fi
 	OLDTAG=`git -C $1 describe --tag --abbrev=0 $BRANCH`
 }
 
@@ -26,7 +32,7 @@ fi
 
 forkrebase() {
 	for r in $AOSP_FORKS; do
-		findtags $r
+		fetchtags $r; findtags $r
 		if [ "$NEWTAG" != "$OLDTAG" ]; then
 			echo "Rebasing $r onto $NEWTAG (from $OLDTAG)"
 			git -C $r rebase --onto $NEWTAG $OLDTAG $BRANCH
