@@ -10,7 +10,7 @@ fetchtags() {
 fetchtags $CANARY && NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 
 findtags() {
-	if [ !`git -C $1 branch --list $BRANCH` ]; then
+	if [ "$(git -C $1 branch --list $BRANCH)" = "" ]; then
 		git -C $1 checkout -q $BRANCH && echo "Branch $BRANCH doesn't exist locally; creating it from remote"
 	fi
 	OLDTAG=`git -C $1 describe --tag --abbrev=0 $BRANCH`
