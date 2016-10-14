@@ -2,12 +2,7 @@
 
 BRANCH=aosp-6.0; TRACK=marshmallow-mr3-release
 
-AOSP_FORKS="build bionic system/core
-			frameworks/av frameworks/base frameworks/native
-			hardware/broadcom/wlan hardware/qcom/audio
-			hardware/qcom/bt hardware/qcom/display
-			hardware/qcom/gps hardware/qcom/keymaster
-			hardware/qcom/media hardware/qcom/wlan"
+AOSP_FORKS="build frameworks/av frameworks/native packages/apps/Camera2"
 
 . `dirname $0`/fork-lib.sh
 
