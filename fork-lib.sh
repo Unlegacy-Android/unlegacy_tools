@@ -32,13 +32,16 @@ prompterr() { read -p "$1 Continue? ($2/N) " prompt; [ "$prompt" = "$2" ] || exi
 prompterr "Found $OLDTAG in $CANARY; newest is $NEWTAG." "y" || \
 prompterr "Seems like $CANARY is already onto latest tag ($NEWTAG)." "y"
 
+PUSH_FORKS=""
+
 rebaseforks() {
 	for r in $AOSP_FORKS; do
 		fetchtags $r; oldtag $r
 		if [ "$NEWTAG" != "$OLDTAG" ]; then
 			echo "Rebasing $r onto $NEWTAG (from $OLDTAG)"
 			git -C $r rebase --onto $NEWTAG $OLDTAG HEAD || \
-			errout "Rebase failed in $r; please fix!"
+			errout "Rebase failed in $r; please fix!" && \
+			PUSH_FORKS="$PUSH_FORKS $r"
 		else
 			echo "Seems like $r is rebased onto latest tag already."
 		fi
@@ -54,7 +57,7 @@ rebaseforks() {
 
 pushforks() {
 	prompterr "Really force push rebased HEADs to Gerrit?" "yes"
-	for r in $AOSP_FORKS; do
+	for r in $PUSH_FORKS; do
 		git -C $r push uag:$UA/`atoua $r` HEAD:refs/heads/$BRANCH -f
 	done
 }
