@@ -1,60 +1,61 @@
 #!/bin/sh
 
-FETCH=https://android.googlesource.com; CANARY=build
-SAUCE=~/android/$BRANCH; cd $SAUCE	# or whatever location
+AOSP=https://android.googlesource.com; SAUCE=~/android/$BRANCH
+UA=Unlegacy-Android; GH=https://github.com; CANARY=build
+
+cd $SAUCE && echo "Using $SAUCE" || echo "Using $PWD"
+
+errout() { echo "$1"; exit 1; }
 
 fetchtags() {
-	git -C $1 fetch -qt $FETCH/platform/$1 $TRACK
+	git -C $1 fetch -qt $AOSP/platform/$1 $TRACK || \
+	errout "Failed to get upstream tags in $1; exiting!"
 }
 
 fetchtags $CANARY && NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 
-findtags() {
-	if [ "$(git -C $1 branch --list $BRANCH)" = "" ]; then
-		git -C $1 checkout -q $BRANCH && echo "Branch $BRANCH doesn't exist locally; creating it from remote"
-	fi
-	OLDTAG=`git -C $1 describe --tag --abbrev=0 $BRANCH`
+atoua() { echo android_`echo $1| tr / _`; }
+
+forkcout() {
+	git -C $1 fetch -qt $GH/$UA/`atoua $1` $BRANCH && \
+	git -C $1 checkout -q FETCH_HEAD || \
+	errout "Failed to get $BRANCH branch in $1; exiting!"
 }
 
-findtags $CANARY
+oldtag() { forkcout $1 && OLDTAG=`git -C $1 describe --tag --abbrev=0 FETCH_HEAD`; }
 
-if [ "$NEWTAG" = "$OLDTAG" ]; then
-	read -p "Seems like $CANARY is onto latest tag ($NEWTAG). Continue? (y/N) " prompt
-	if [ "$prompt" != "y" ]; then
-		exit 0
-	fi
-else
-	read -p "Found $OLDTAG in $CANARY; newest is $NEWTAG. Continue? (y/N) " prompt
-	if [ "$prompt" != "y" ]; then
-		exit 0
-	fi
-fi
+oldtag $CANARY
 
-forkrebase() {
+prompterr() { read -p "$1 Continue? ($2/N) " prompt; [ "$prompt" = "$2" ] || exit 0; }
+
+[ "$NEWTAG" != "$OLDTAG" ] && \
+prompterr "Found $OLDTAG in $CANARY; newest is $NEWTAG." "y" || \
+prompterr "Seems like $CANARY is already onto latest tag ($NEWTAG)." "y"
+
+rebaseforks() {
 	for r in $AOSP_FORKS; do
-		fetchtags $r; findtags $r
+		fetchtags $r; oldtag $r
 		if [ "$NEWTAG" != "$OLDTAG" ]; then
 			echo "Rebasing $r onto $NEWTAG (from $OLDTAG)"
-			git -C $r rebase --onto $NEWTAG $OLDTAG $BRANCH
+			git -C $r rebase --onto $NEWTAG $OLDTAG HEAD || \
+			errout "Rebase failed in $r; please fix!"
 		else
 			echo "Seems like $r is rebased onto latest tag already."
 		fi
 	done
 }
 
-#GERRIT=gerrit.unlegacy-android.cf:29418; $USER=???
+#GERRIT=gerrit.unlegacy-android.cf:29418; $USER=???; UAG=ssh://$USER@$GERRIT/$UA
 #Actually, better create a remote in ~/.ssh/config:
-#Host ul
+#Host uag
 #    Port 29418
 #    User ???
 #    HostName gerrit.unlegacy-android.cf
 
-PJROOT=Unlegacy-Android; #UA=ssh://$USER@$GERRIT/$PJROOT
-
-forkpush() {
+pushforks() {
+	prompterr "Really force push rebased HEADs to Gerrit?" "yes"
 	for r in $AOSP_FORKS; do
-		f=android_`echo $r| tr / _`; echo $f
-		git -C $r push ul:$PJROOT/$f $BRANCH:refs/heads/$BRANCH -f
+		git -C $r push uag:$UA/`atoua $r` HEAD:refs/heads/$BRANCH -f
 	done
 }
 

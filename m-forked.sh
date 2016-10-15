@@ -6,4 +6,4 @@ AOSP_FORKS="build frameworks/av frameworks/native packages/apps/Camera2"
 
 . `dirname $0`/fork-lib.sh
 
-forkrebase
+rebaseforks && pushforks

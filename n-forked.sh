@@ -11,4 +11,4 @@ AOSP_FORKS="build bionic system/core
 
 . `dirname $0`/fork-lib.sh
 
-forkrebase
+rebaseforks && pushforks
