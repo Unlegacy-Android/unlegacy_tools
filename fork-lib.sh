@@ -49,7 +49,6 @@ rebaseforks() {
 }
 
 #UAG=gerrit.unlegacy-android.cf:29418; $UAGER=???; GERRIT=ssh://$UAGER@$UAG/$UA
-
 #Actually, better create a remote in ~/.ssh/config:
 #Host uag
 #    User ???
