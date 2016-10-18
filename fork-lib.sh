@@ -42,14 +42,14 @@ forkrebase() {
 	done
 }
 
-#GERRIT=gerrit.unlegacy-android.cf:29418; $USER=???
+#GERRIT=gerrit.unlegacy-android.cf:29418; $GUSER=???
 #Actually, better create a remote in ~/.ssh/config:
 #Host ul
 #    Port 29418
 #    User ???
 #    HostName gerrit.unlegacy-android.cf
 
-PJROOT=Unlegacy-Android; #UA=ssh://$USER@$GERRIT/$PJROOT
+PJROOT=Unlegacy-Android; #UA=ssh://$GUSER@$GERRIT/$PJROOT
 
 forkpush() {
 	for r in $AOSP_FORKS; do
