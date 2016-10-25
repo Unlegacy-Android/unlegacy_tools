@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BRANCH=aosp-7.1; TRACK=nougat-dr1-release
+FALLBR=aosp-7.0; BRANCH=aosp-7.1; TRACK=nougat-dr1-release
 
 AOSP_FORKS="build bionic system/core
 			frameworks/av frameworks/native
