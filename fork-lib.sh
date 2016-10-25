@@ -17,8 +17,10 @@ fetchtags $CANARY && NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 atoua() { echo android_`echo $1| tr / _`; }
 
 forkcout() {
-	git -C $1 fetch -qt $GH/$UA/`atoua $1` $BRANCH && \
-	git -C $1 checkout -q FETCH_HEAD || \
+	git -C $1 fetch -qt $GH/$UA/`atoua $1` $BRANCH || \
+	([ -z "$FALLBR" ] || git -C $1 fetch -qt $GH/$UA/`atoua $1` $FALLBR)
+
+	[ $? -eq 0 ] && git -C $1 checkout -q FETCH_HEAD || \
 	mexit "Failed to get $BRANCH branch in $1; exiting!" 1
 }
 
