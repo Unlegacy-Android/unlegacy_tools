@@ -2,7 +2,7 @@
 
 FALLBR=aosp-7.0; BRANCH=aosp-7.1; TRACK=nougat-dr1-release
 
-AOSP_FORKS="build bionic system/core
+AOSP_FORKS="build bionic system/core system/sepolicy
 			frameworks/av frameworks/base frameworks/native
 			hardware/broadcom/wlan hardware/qcom/audio
 			hardware/qcom/bt hardware/qcom/display
