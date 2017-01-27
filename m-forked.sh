@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BRANCH=aosp-6.0; TRACK=marshmallow-mr3-release
+BRANCH=aosp-6.0; TRACK=marshmallow-mr2-release
 
 AOSP_FORKS="build frameworks/av frameworks/native packages/apps/Camera2"
 
