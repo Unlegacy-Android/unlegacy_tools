@@ -2,7 +2,8 @@
 
 BRANCH=aosp-6.0; TRACK=marshmallow-mr2-release
 
-AOSP_FORKS="build frameworks/av frameworks/native packages/apps/Camera2"
+AOSP_FORKS="build system/core frameworks/av frameworks/native
+			packages/apps/Camera2"
 
 . `dirname $0`/fork-lib.sh
 
