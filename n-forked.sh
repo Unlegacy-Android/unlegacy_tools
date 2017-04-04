@@ -1,6 +1,6 @@
 #!/bin/sh
 
-FALLBR=aosp-7.0; BRANCH=aosp-7.1; TRACK=nougat-mr1.3-release
+FALLBR=aosp-7.0; BRANCH=aosp-7.1; TRACK=nougat-mr2-release
 
 AOSP_FORKS="build bionic system/core system/sepolicy
 			frameworks/av frameworks/base frameworks/native
