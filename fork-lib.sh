@@ -1,20 +1,20 @@
 #!/bin/sh
 
 AOSP=https://android.googlesource.com; SAUCE=~/android/$BRANCH
-UA=Unlegacy-Android; GH=https://github.com; CANARY=build
+UA=Unlegacy-Android; GH=https://github.com; CANARY=`echo $AOSP_FORKS| cut -d\  -f1`
 
 cd $SAUCE && echo "Using $SAUCE" || echo "Using $PWD"
 
 mexit() { echo "$1"; exit $2; }
 
 fetchtags() {
-	git -C $1 fetch -qt $AOSP/platform/$1 $TRACK || \
+	git -C $1 fetch -qt $AOSP/platform/${1%/make} $TRACK || \
 	mexit "Failed to get upstream tags in $1; exiting!" 1
 }
 
 fetchtags $CANARY && NEWTAG=`git -C $CANARY describe --tag FETCH_HEAD`
 
-atoua() { echo android_`echo $1| tr / _`; }
+atoua() { echo android_`echo ${1%/make}| tr / _`; }
 
 forkcout() {
 	git -C $1 fetch -qt $GH/$UA/`atoua $1` $BRANCH || \
