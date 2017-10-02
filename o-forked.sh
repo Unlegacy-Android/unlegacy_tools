@@ -3,6 +3,7 @@
 BRANCH=aosp-8.0; TRACK=oreo-release
 
 AOSP_FORKS="build/make build/soong bionic
+	hardware/interfaces hardware/ril
 	system/bt system/core system/sepolicy
 	frameworks/av frameworks/base frameworks/native
 	hardware/broadcom/wlan hardware/qcom/audio
