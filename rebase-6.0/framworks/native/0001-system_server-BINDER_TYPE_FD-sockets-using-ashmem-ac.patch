@@ -1,0 +1,68 @@
+From ee12930195f4f10589afce175cc5f300dac96d6e Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Wed, 27 Jan 2016 08:02:48 -0800
+Subject: [PATCH 01/11] system_server BINDER_TYPE_FD sockets using ashmem
+ accessors
+
+check if device is a character device, before calling
+ashmem_get_size_region. We do not check if the st_rdev
+matches /dev/ashmem. So this at least eliminates making
+this call when associated with a socket.
+
+Bug: 26374183
+Change-Id: I68ed9d1c2cd4c47228ed065e3e18eb4151f038f4
+---
+ libs/binder/Parcel.cpp | 23 ++++++++++++++++-------
+ 1 file changed, 16 insertions(+), 7 deletions(-)
+
+diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
+index ef39801..0825a24 100644
+--- a/libs/binder/Parcel.cpp
++++ b/libs/binder/Parcel.cpp
+@@ -42,6 +42,9 @@
+ #include <stdlib.h>
+ #include <stdint.h>
+ #include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <unistd.h>
+ 
+ #ifndef INT32_MAX
+ #define INT32_MAX ((int32_t)(2147483647))
+@@ -123,8 +126,10 @@ void acquire_object(const sp<ProcessState>& proc,
+             return;
+         }
+         case BINDER_TYPE_FD: {
+-            if (obj.cookie != 0) {
+-                if (outAshmemSize != NULL) {
++            if ((obj.cookie != 0) && (outAshmemSize != NULL)) {
++                struct stat st;
++                int ret = fstat(obj.handle, &st);
++                if (!ret && S_ISCHR(st.st_mode)) {
+                     // If we own an ashmem fd, keep track of how much memory it refers to.
+                     int size = ashmem_get_size_region(obj.handle);
+                     if (size > 0) {
+@@ -173,11 +178,15 @@ static void release_object(const sp<ProcessState>& proc,
+             return;
+         }
+         case BINDER_TYPE_FD: {
+-            if (outAshmemSize != NULL) {
+-                if (obj.cookie != 0) {
+-                    int size = ashmem_get_size_region(obj.handle);
+-                    if (size > 0) {
+-                        *outAshmemSize -= size;
++            if (obj.cookie != 0) { // owned
++                if (outAshmemSize != NULL) {
++                    struct stat st;
++                    int ret = fstat(obj.handle, &st);
++                    if (!ret && S_ISCHR(st.st_mode)) {
++                        int size = ashmem_get_size_region(obj.handle);
++                        if (size > 0) {
++                            *outAshmemSize -= size;
++                        }
+                     }
+ 
+                     close(obj.handle);
+-- 
+2.7.4
+

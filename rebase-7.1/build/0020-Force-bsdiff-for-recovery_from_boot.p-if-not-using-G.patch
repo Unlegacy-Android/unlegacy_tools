@@ -1,0 +1,32 @@
+From 9ee464a167749dd52bfc56b9d1a559a2cf4c98b4 Mon Sep 17 00:00:00 2001
+From: Andreas Blaesius <skate4life@gmx.de>
+Date: Fri, 15 May 2015 06:11:44 -0400
+Subject: [PATCH 20/20] Force bsdiff for recovery_from_boot.p if not using GZIP
+
+imgdiff expects a ramdisk to use GZIP, which is causing a chunk
+size issue if recovery is using LZMA
+
+Change-Id: I3194b4faed25a298fe23b4e24b6dea2885bafda8
+---
+ core/Makefile | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/core/Makefile b/core/Makefile
+index 3270372..6577e53 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1211,7 +1211,11 @@ $(RECOVERY_FROM_BOOT_PATCH): $(INSTALLED_RECOVERYIMAGE_TARGET) \
+ 	                     $(HOST_OUT_EXECUTABLES)/bsdiff
+ 	@echo "Construct recovery from boot"
+ 	mkdir -p $(dir $@)
++ifeq ($(TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK),true)
++	PATH=$(HOST_OUT_EXECUTABLES):$$PATH $(HOST_OUT_EXECUTABLES)/bsdiff $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_RECOVERYIMAGE_TARGET) $@
++else
+ 	PATH=$(HOST_OUT_EXECUTABLES):$$PATH $(HOST_OUT_EXECUTABLES)/imgdiff $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_RECOVERYIMAGE_TARGET) $@
++endif
+ else # $(BOARD_USES_FULL_RECOVERY_IMAGE) == true
+ RECOVERY_FROM_BOOT_PATCH := $(INSTALLED_RECOVERYIMAGE_TARGET)
+ endif
+-- 
+2.7.4
+

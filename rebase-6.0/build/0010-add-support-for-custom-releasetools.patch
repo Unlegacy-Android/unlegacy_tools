@@ -1,0 +1,63 @@
+From 8f7f573a5f94de7009ee987c3e8b1dd82ebed329 Mon Sep 17 00:00:00 2001
+From: codeworkx <daniel.hillenbrand@codeworkx.de>
+Date: Thu, 17 Nov 2011 17:33:44 +0100
+Subject: [PATCH 10/12] add support for custom releasetools
+
+Change-Id: Ifa026e63150a82fa5dc73d7cf13354098b3e55f2
+---
+ core/Makefile | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 7653b6c..250def2 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1591,16 +1591,26 @@ else
+     $(INTERNAL_OTA_PACKAGE_TARGET): override_device := $(TARGET_OTA_ASSERT_DEVICE)
+ endif
+ 
++ifeq ($(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT),)
++    OTA_FROM_TARGET_SCRIPT := ./build/tools/releasetools/ota_from_target_files
++else
++    OTA_FROM_TARGET_SCRIPT := $(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT)
++endif
++
+ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+ 	@echo "Package OTA: $@"
+ 	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+-	   ./build/tools/releasetools/ota_from_target_files -v \
++	   $(OTA_FROM_TARGET_SCRIPT) -v \
+ 	   --block \
+ 	   -p $(HOST_OUT) \
+ 	   -k $(KEY_CERT_PAIR) \
+ 	   --override_device=$(override_device) \
+ 	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
+ 	   $(BUILT_TARGET_FILES_PACKAGE) $@
++ifneq ($(TARGET_CUSTOM_RELEASETOOL),)
++	@echo "Running releasetool"
++	$(TARGET_CUSTOM_RELEASETOOL)
++endif
+ 
+ .PHONY: otapackage
+ otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+@@ -1621,10 +1631,16 @@ name := $(name)-img-$(FILE_NAME_TAG)
+ 
+ INTERNAL_UPDATE_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
+ 
++ifeq ($(TARGET_RELEASETOOL_IMG_FROM_TARGET_SCRIPT),)
++    IMG_FROM_TARGET_SCRIPT := ./build/tools/releasetools/img_from_target_files
++else
++    IMG_FROM_TARGET_SCRIPT := $(TARGET_RELEASETOOL_IMG_FROM_TARGET_SCRIPT)
++endif
++
+ $(INTERNAL_UPDATE_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+ 	@echo "Package: $@"
+ 	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+-	   ./build/tools/releasetools/img_from_target_files -v \
++	   $(IMG_FROM_TARGET_SCRIPT) -v \
+ 	   -p $(HOST_OUT) \
+ 	   $(BUILT_TARGET_FILES_PACKAGE) $@
+ 
+-- 
+2.7.4
+

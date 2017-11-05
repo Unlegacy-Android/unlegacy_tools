@@ -1,0 +1,55 @@
+From 6d351611fbbb00cda08420b029c776048c84c617 Mon Sep 17 00:00:00 2001
+From: Simon Shields <keepcalm444@gmail.com>
+Date: Thu, 8 Sep 2016 20:23:27 +1000
+Subject: [PATCH 3/5] msm8960: fixes for N
+
+* fixup of 4ed66e62279001cd62e5acec53f3e1cf5d64e77d for 8960
+* port across a few constants from de4849cee04a23ae84da96487e344f75f93e5585
+  to get 8960 building.
+
+Change-Id: I98bbf5843d9b93ba1263e36a0ad64ea596cec244
+---
+ hal/msm8960/platform.c | 2 +-
+ hal/msm8960/platform.h | 6 ++++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/hal/msm8960/platform.c b/hal/msm8960/platform.c
+index 7b76df3..ca846f2 100644
+--- a/hal/msm8960/platform.c
++++ b/hal/msm8960/platform.c
+@@ -1104,7 +1104,7 @@ int platform_get_snd_device_name_extn(void *platform __unused,
+ }
+ 
+ bool platform_check_and_set_capture_backend_cfg(struct audio_device* adev __unused,
+-                                              struct audio_usecase *usecase __unused)
++                                              struct audio_usecase *usecase __unused, snd_device_t snd_device)
+ {
+     return false;
+ }
+diff --git a/hal/msm8960/platform.h b/hal/msm8960/platform.h
+index b879c0b..de74563 100644
+--- a/hal/msm8960/platform.h
++++ b/hal/msm8960/platform.h
+@@ -92,6 +92,9 @@ enum {
+ 
+ };
+ 
++#define DEVICE_NAME_MAX_SIZE   128
++#define HW_INFO_ARRAY_MAX_SIZE 32
++
+ #define MIXER_CARD 0
+ #define SOUND_CARD 0
+ #define MIXER_PATH_MAX_LENGTH 100
+@@ -122,6 +125,9 @@ enum {
+ #define LOW_LATENCY_CAPTURE_PERIOD_SIZE 240
+ #define LOW_LATENCY_CAPTURE_USE_CASE 0
+ 
++#define PLATFORM_INFO_XML_PATH          "/system/etc/audio_platform_info.xml"
++#define PLATFORM_INFO_XML_BASE_STRING   "/system/etc/audio_platform_info"
++
+ #define AFE_PROXY_PLAYBACK_PCM_DEVICE 7
+ #define AFE_PROXY_RECORD_PCM_DEVICE 8
+ 
+-- 
+2.7.4
+

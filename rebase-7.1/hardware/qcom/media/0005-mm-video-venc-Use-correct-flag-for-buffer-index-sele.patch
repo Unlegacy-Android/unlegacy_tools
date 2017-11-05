@@ -1,0 +1,50 @@
+From 767754b5d603a40b8060ba79a9d589a600be4826 Mon Sep 17 00:00:00 2001
+From: Leena Winterrowd <lenhardw@codeaurora.org>
+Date: Tue, 30 Sep 2014 12:58:54 -0700
+Subject: [PATCH 05/10] mm-video: venc: Use correct flag for buffer index
+ selection
+
+meta_mode_enable reflects whether the component is using meta
+buffers or the input mem pointer. Use this flag (instead of
+mUseProxyColorFormat) when computing the buffer index to ensure a
+valid buffer index.
+
+Change-Id: I616a6cb797683c21bbe7a228b410827fbd9ebb76
+---
+ msm8974/mm-video-legacy/vidc/venc/src/omx_video_base.cpp | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_base.cpp b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_base.cpp
+index cbda5b4..3ffca44 100644
+--- a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_base.cpp
++++ b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_base.cpp
+@@ -2498,7 +2498,7 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
+     return OMX_ErrorBadParameter;
+   }
+ 
+-  index = bufferHdr - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
++  index = bufferHdr - ((!meta_mode_enable)?m_inp_mem_ptr:meta_buffer_hdr);
+ #ifdef _ANDROID_ICS_
+   if(meta_mode_enable)
+   {
+@@ -3116,7 +3116,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
+   if(port == PORT_INDEX_IN)
+   {
+     // check if the buffer is valid
+-    nPortIndex = buffer - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
++    nPortIndex = buffer - ((!meta_mode_enable)?m_inp_mem_ptr:meta_buffer_hdr);
+ 
+     DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d, actual cnt %d \n",
+                     nPortIndex, m_sInPortDef.nBufferCountActual);
+@@ -3306,7 +3306,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
+     return OMX_ErrorIncorrectStateOperation;
+   }
+ 
+-  nBufferIndex = buffer - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
++  nBufferIndex = buffer - ((!meta_mode_enable)?m_inp_mem_ptr:meta_buffer_hdr);
+ 
+   if(nBufferIndex > m_sInPortDef.nBufferCountActual )
+   {
+-- 
+2.7.4
+

@@ -1,0 +1,474 @@
+From 357400130f7be9fb867bacbbbfdc3b0ad873b5fc Mon Sep 17 00:00:00 2001
+From: Yusuke Sato <yusukes@google.com>
+Date: Wed, 8 Jul 2015 14:57:07 -0700
+Subject: [PATCH 4/4] Use fsck.f2fs -a instead of -f for faster boot
+
+and run fsck with -f on clean shutdown instead.
+
+With -f, fsck.f2fs always performs a full scan of the /data
+partition regardless of whether the partition is clean or not.
+The full scan takes more than 2 seconds on volantis-userdebug
+and delays the OS boot.
+
+With -a, the command does almost nothing when the partition
+is clean and finishes within 20-30ms on volantis-userdebug.
+When the partition has an error or its check point has
+CP_FSCK_FLAG (aka "need_fsck"), the command does exactly the
+same full scan as -f to fix it.
+
+Bug: 21853106
+Change-Id: I126263caf34c0f5bb8f5e6794454d4e72526ce38
+---
+ fs_mgr/fs_mgr.c                 |   4 +-
+ include/cutils/android_reboot.h |   5 ++
+ init/builtins.cpp               |  71 ++++++++++++++-
+ libcutils/android_reboot.c      | 187 +++++++++++++++++++++++++++++++++-------
+ logwrapper/logwrap.c            |   7 +-
+ 5 files changed, 236 insertions(+), 38 deletions(-)
+
+diff --git a/fs_mgr/fs_mgr.c b/fs_mgr/fs_mgr.c
+index 15d44ef..b3afe2d 100644
+--- a/fs_mgr/fs_mgr.c
++++ b/fs_mgr/fs_mgr.c
+@@ -161,10 +161,10 @@ static void check_fs(char *blk_device, char *fs_type, char *target)
+     } else if (!strcmp(fs_type, "f2fs")) {
+             char *f2fs_fsck_argv[] = {
+                     F2FS_FSCK_BIN,
+-                    "-f",
++                    "-a",
+                     blk_device
+             };
+-        INFO("Running %s -f %s\n", F2FS_FSCK_BIN, blk_device);
++        INFO("Running %s -a %s\n", F2FS_FSCK_BIN, blk_device);
+ 
+         ret = android_fork_execvp_ext(ARRAY_SIZE(f2fs_fsck_argv), f2fs_fsck_argv,
+                                       &status, true, LOG_KLOG | LOG_FILE,
+diff --git a/include/cutils/android_reboot.h b/include/cutils/android_reboot.h
+index 85e1b7e..a3861a0 100644
+--- a/include/cutils/android_reboot.h
++++ b/include/cutils/android_reboot.h
+@@ -17,6 +17,8 @@
+ #ifndef __CUTILS_ANDROID_REBOOT_H__
+ #define __CUTILS_ANDROID_REBOOT_H__
+ 
++#include <mntent.h>
++
+ __BEGIN_DECLS
+ 
+ /* Commands */
+@@ -28,6 +30,9 @@ __BEGIN_DECLS
+ #define ANDROID_RB_PROPERTY "sys.powerctl"
+ 
+ int android_reboot(int cmd, int flags, const char *arg);
++int android_reboot_with_callback(
++    int cmd, int flags, const char *arg,
++    void (*cb_on_remount)(const struct mntent*));
+ 
+ __END_DECLS
+ 
+diff --git a/init/builtins.cpp b/init/builtins.cpp
+index 8eb5b5b..780a4a1 100644
+--- a/init/builtins.cpp
++++ b/init/builtins.cpp
+@@ -16,7 +16,9 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++#include <mntent.h>
+ #include <net/if.h>
++#include <signal.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -38,6 +40,7 @@
+ #include <base/stringprintf.h>
+ #include <cutils/partition_utils.h>
+ #include <cutils/android_reboot.h>
++#include <logwrap/logwrap.h>
+ #include <private/android_filesystem_config.h>
+ 
+ #include "init.h"
+@@ -49,6 +52,8 @@
+ #include "log.h"
+ 
+ #define chmod DO_NOT_USE_CHMOD_USE_FCHMODAT_SYMLINK_NOFOLLOW
++#define UNMOUNT_CHECK_MS 5000
++#define UNMOUNT_CHECK_TIMES 10
+ 
+ int add_environment(const char *name, const char *value);
+ 
+@@ -109,6 +114,67 @@ static void service_start_if_not_disabled(struct service *svc)
+     }
+ }
+ 
++static void unmount_and_fsck(const struct mntent *entry)
++{
++    if (strcmp(entry->mnt_type, "f2fs") && strcmp(entry->mnt_type, "ext4"))
++        return;
++
++    /* First, lazily unmount the directory. This unmount request finishes when
++     * all processes that open a file or directory in |entry->mnt_dir| exit.
++     */
++    TEMP_FAILURE_RETRY(umount2(entry->mnt_dir, MNT_DETACH));
++
++    /* Next, kill all processes except init, kthreadd, and kthreadd's
++     * children to finish the lazy unmount. Killing all processes here is okay
++     * because this callback function is only called right before reboot().
++     * It might be cleaner to selectively kill processes that actually use
++     * |entry->mnt_dir| rather than killing all, probably by reusing a function
++     * like killProcessesWithOpenFiles() in vold/, but the selinux policy does
++     * not allow init to scan /proc/<pid> files which the utility function
++     * heavily relies on. The policy does not allow the process to execute
++     * killall/pkill binaries either. Note that some processes might
++     * automatically restart after kill(), but that is not really a problem
++     * because |entry->mnt_dir| is no longer visible to such new processes.
++     */
++    service_for_each(service_stop);
++    TEMP_FAILURE_RETRY(kill(-1, SIGKILL));
++
++    int count = 0;
++    while (count++ < UNMOUNT_CHECK_TIMES) {
++        int fd = TEMP_FAILURE_RETRY(open(entry->mnt_fsname, O_RDONLY | O_EXCL));
++        if (fd >= 0) {
++            /* |entry->mnt_dir| has sucessfully been unmounted. */
++            close(fd);
++            break;
++        } else if (errno == EBUSY) {
++            /* Some processes using |entry->mnt_dir| are still alive. Wait for a
++             * while then retry.
++             */
++            TEMP_FAILURE_RETRY(
++                usleep(UNMOUNT_CHECK_MS * 1000 / UNMOUNT_CHECK_TIMES));
++            continue;
++        } else {
++            /* Cannot open the device. Give up. */
++            return;
++        }
++    }
++
++    int st;
++    if (!strcmp(entry->mnt_type, "f2fs")) {
++        const char *f2fs_argv[] = {
++            "/system/bin/fsck.f2fs", "-f", entry->mnt_fsname,
++        };
++        android_fork_execvp_ext(ARRAY_SIZE(f2fs_argv), (char **)f2fs_argv,
++                                &st, true, LOG_KLOG, true, NULL);
++    } else if (!strcmp(entry->mnt_type, "ext4")) {
++        const char *ext4_argv[] = {
++            "/system/bin/e2fsck", "-f", "-y", entry->mnt_fsname,
++        };
++        android_fork_execvp_ext(ARRAY_SIZE(ext4_argv), (char **)ext4_argv,
++                                &st, true, LOG_KLOG, true, NULL);
++    }
++}
++
+ int do_class_start(int nargs, char **args)
+ {
+         /* Starting a class does not start services
+@@ -559,6 +625,7 @@ int do_powerctl(int nargs, char **args)
+     int len = 0;
+     int cmd = 0;
+     const char *reboot_target;
++    void (*callback_on_ro_remount)(const struct mntent*) = NULL;
+ 
+     res = expand_props(command, args[1], sizeof(command));
+     if (res) {
+@@ -569,6 +636,7 @@ int do_powerctl(int nargs, char **args)
+     if (strncmp(command, "shutdown", 8) == 0) {
+         cmd = ANDROID_RB_POWEROFF;
+         len = 8;
++        callback_on_ro_remount = unmount_and_fsck;
+     } else if (strncmp(command, "reboot", 6) == 0) {
+         cmd = ANDROID_RB_RESTART2;
+         len = 6;
+@@ -586,7 +654,8 @@ int do_powerctl(int nargs, char **args)
+         return -EINVAL;
+     }
+ 
+-    return android_reboot(cmd, 0, reboot_target);
++    return android_reboot_with_callback(cmd, 0, reboot_target,
++                                        callback_on_ro_remount);
+ }
+ 
+ int do_trigger(int nargs, char **args)
+diff --git a/libcutils/android_reboot.c b/libcutils/android_reboot.c
+index 6ae23c1..af7e189 100644
+--- a/libcutils/android_reboot.c
++++ b/libcutils/android_reboot.c
+@@ -14,43 +14,108 @@
+  * limitations under the License.
+  */
+ 
+-#include <unistd.h>
+-#include <sys/reboot.h>
+-#include <sys/syscall.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
++#include <errno.h>
+ #include <fcntl.h>
+ #include <mntent.h>
++#include <stdbool.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
++#include <sys/cdefs.h>
++#include <sys/mount.h>
++#include <sys/reboot.h>
++#include <sys/stat.h>
++#include <sys/syscall.h>
++#include <sys/types.h>
++#include <unistd.h>
+ 
+ #include <cutils/android_reboot.h>
++#include <cutils/klog.h>
++#include <cutils/list.h>
+ 
+-#define UNUSED __attribute__((unused))
++#define TAG "android_reboot"
++#define READONLY_CHECK_MS 5000
++#define READONLY_CHECK_TIMES 50
+ 
+-/* Check to see if /proc/mounts contains any writeable filesystems
+- * backed by a block device.
+- * Return true if none found, else return false.
++typedef struct {
++    struct listnode list;
++    struct mntent entry;
++} mntent_list;
++
++static bool has_mount_option(const char* opts, const char* opt_to_find)
++{
++  bool ret = false;
++  char* copy = NULL;
++  char* opt;
++  char* rem;
++
++  while ((opt = strtok_r(copy ? NULL : (copy = strdup(opts)), ",", &rem))) {
++      if (!strcmp(opt, opt_to_find)) {
++          ret = true;
++          break;
++      }
++  }
++
++  free(copy);
++  return ret;
++}
++
++static bool is_block_device(const char* fsname)
++{
++    return !strncmp(fsname, "/dev/block", 10);
++}
++
++/* Find all read+write block devices in /proc/mounts and add them to
++ * |rw_entries|.
+  */
+-static int remount_ro_done(void)
++static void find_rw(struct listnode* rw_entries)
+ {
+     FILE* fp;
+     struct mntent* mentry;
+-    int found_rw_fs = 0;
+ 
+     if ((fp = setmntent("/proc/mounts", "r")) == NULL) {
+-        /* If we can't read /proc/mounts, just give up. */
+-        return 1;
++        KLOG_WARNING(TAG, "Failed to open /proc/mounts.\n");
++        return;
+     }
+     while ((mentry = getmntent(fp)) != NULL) {
+-        if (!strncmp(mentry->mnt_fsname, "/dev/block", 10) && strstr(mentry->mnt_opts, "rw,")) {
+-            found_rw_fs = 1;
+-            break;
++        if (is_block_device(mentry->mnt_fsname) &&
++            has_mount_option(mentry->mnt_opts, "rw")) {
++            mntent_list* item = (mntent_list*)calloc(1, sizeof(mntent_list));
++            item->entry = *mentry;
++            item->entry.mnt_fsname = strdup(mentry->mnt_fsname);
++            item->entry.mnt_dir = strdup(mentry->mnt_dir);
++            item->entry.mnt_type = strdup(mentry->mnt_type);
++            item->entry.mnt_opts = strdup(mentry->mnt_opts);
++            list_add_tail(rw_entries, &item->list);
+         }
+     }
+     endmntent(fp);
++}
++
++static void free_entries(struct listnode* entries)
++{
++    struct listnode* node;
++    struct listnode* n;
++    list_for_each_safe(node, n, entries) {
++        mntent_list* item = node_to_item(node, mntent_list, list);
++        free(item->entry.mnt_fsname);
++        free(item->entry.mnt_dir);
++        free(item->entry.mnt_type);
++        free(item->entry.mnt_opts);
++        free(item);
++    }
++}
+ 
+-    return !found_rw_fs;
++static mntent_list* find_item(struct listnode* rw_entries, const char* fsname_to_find)
++{
++    struct listnode* node;
++    list_for_each(node, rw_entries) {
++        mntent_list* item = node_to_item(node, mntent_list, list);
++        if (!strcmp(item->entry.mnt_fsname, fsname_to_find)) {
++            return item;
++        }
++    }
++    return NULL;
+ }
+ 
+ /* Remounting filesystems read-only is difficult when there are files
+@@ -64,38 +129,92 @@ static int remount_ro_done(void)
+  * repeatedly until there are no more writable filesystems mounted on
+  * block devices.
+  */
+-static void remount_ro(void)
++static void remount_ro(void (*cb_on_remount)(const struct mntent*))
+ {
+-    int fd, cnt = 0;
++    int fd, cnt;
++    FILE* fp;
++    struct mntent* mentry;
++    struct listnode* node;
++
++    list_declare(rw_entries);
++    list_declare(ro_entries);
++
++    sync();
++    find_rw(&rw_entries);
+ 
+     /* Trigger the remount of the filesystems as read-only,
+      * which also marks them clean.
+      */
+-    fd = open("/proc/sysrq-trigger", O_WRONLY);
++    fd = TEMP_FAILURE_RETRY(open("/proc/sysrq-trigger", O_WRONLY));
+     if (fd < 0) {
+-        return;
++        KLOG_WARNING(TAG, "Failed to open sysrq-trigger.\n");
++        /* TODO: Try to remount each rw parition manually in readonly mode.
++         * This may succeed if no process is using the partition.
++         */
++        goto out;
++    }
++    if (TEMP_FAILURE_RETRY(write(fd, "u", 1)) != 1) {
++        close(fd);
++        KLOG_WARNING(TAG, "Failed to write to sysrq-trigger.\n");
++        /* TODO: The same. Manually remount the paritions. */
++        goto out;
+     }
+-    write(fd, "u", 1);
+     close(fd);
+ 
+-
+     /* Now poll /proc/mounts till it's done */
+-    while (!remount_ro_done() && (cnt < 50)) {
+-        usleep(100000);
++    cnt = 0;
++    while (cnt < READONLY_CHECK_TIMES) {
++        if ((fp = setmntent("/proc/mounts", "r")) == NULL) {
++            /* If we can't read /proc/mounts, just give up. */
++            KLOG_WARNING(TAG, "Failed to open /proc/mounts.\n");
++            goto out;
++        }
++        while ((mentry = getmntent(fp)) != NULL) {
++            if (!is_block_device(mentry->mnt_fsname) ||
++                !has_mount_option(mentry->mnt_opts, "ro")) {
++                continue;
++            }
++            mntent_list* item = find_item(&rw_entries, mentry->mnt_fsname);
++            if (item) {
++                /* |item| has now been ro remounted. */
++                list_remove(&item->list);
++                list_add_tail(&ro_entries, &item->list);
++            }
++        }
++        endmntent(fp);
++        if (list_empty(&rw_entries)) {
++            /* All rw block devices are now readonly. */
++            break;
++        }
++        TEMP_FAILURE_RETRY(
++            usleep(READONLY_CHECK_MS * 1000 / READONLY_CHECK_TIMES));
+         cnt++;
+     }
+ 
+-    return;
+-}
++    list_for_each(node, &rw_entries) {
++        mntent_list* item = node_to_item(node, mntent_list, list);
++        KLOG_WARNING(TAG, "Failed to remount %s in readonly mode.\n",
++                     item->entry.mnt_fsname);
++    }
++
++    if (cb_on_remount) {
++        list_for_each(node, &ro_entries) {
++            mntent_list* item = node_to_item(node, mntent_list, list);
++            cb_on_remount(&item->entry);
++        }
++    }
+ 
++out:
++    free_entries(&rw_entries);
++    free_entries(&ro_entries);
++}
+ 
+-int android_reboot(int cmd, int flags UNUSED, const char *arg)
++int android_reboot_with_callback(
++    int cmd, int flags __unused, const char *arg,
++    void (*cb_on_remount)(const struct mntent*))
+ {
+     int ret;
+-
+-    sync();
+-    remount_ro();
+-
++    remount_ro(cb_on_remount);
+     switch (cmd) {
+         case ANDROID_RB_RESTART:
+             ret = reboot(RB_AUTOBOOT);
+@@ -117,3 +236,7 @@ int android_reboot(int cmd, int flags UNUSED, const char *arg)
+     return ret;
+ }
+ 
++int android_reboot(int cmd, int flags, const char *arg)
++{
++    return android_reboot_with_callback(cmd, flags, arg, NULL);
++}
+diff --git a/logwrapper/logwrap.c b/logwrapper/logwrap.c
+index 83576fb..44455d1 100644
+--- a/logwrapper/logwrap.c
++++ b/logwrapper/logwrap.c
+@@ -355,7 +355,8 @@ static int parent(const char *tag, int parent_read, pid_t pid,
+         }
+ 
+         if (poll_fds[0].revents & POLLIN) {
+-            sz = read(parent_read, &buffer[b], sizeof(buffer) - 1 - b);
++            sz = TEMP_FAILURE_RETRY(
++                read(parent_read, &buffer[b], sizeof(buffer) - 1 - b));
+ 
+             sz += b;
+             // Log one line at a time
+@@ -490,7 +491,7 @@ int android_fork_execvp_ext(int argc, char* argv[], int *status, bool ignore_int
+     }
+ 
+     /* Use ptty instead of socketpair so that STDOUT is not buffered */
+-    parent_ptty = open("/dev/ptmx", O_RDWR);
++    parent_ptty = TEMP_FAILURE_RETRY(open("/dev/ptmx", O_RDWR));
+     if (parent_ptty < 0) {
+         ERROR("Cannot create parent ptty\n");
+         rc = -1;
+@@ -505,7 +506,7 @@ int android_fork_execvp_ext(int argc, char* argv[], int *status, bool ignore_int
+         goto err_ptty;
+     }
+ 
+-    child_ptty = open(child_devname, O_RDWR);
++    child_ptty = TEMP_FAILURE_RETRY(open(child_devname, O_RDWR));
+     if (child_ptty < 0) {
+         ERROR("Cannot open child_ptty\n");
+         rc = -1;
+-- 
+2.7.4
+

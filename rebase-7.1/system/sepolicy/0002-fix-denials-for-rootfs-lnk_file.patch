@@ -1,0 +1,41 @@
+From cb95eaa6fa34595efd79223477ba68907b20df1d Mon Sep 17 00:00:00 2001
+From: Hashcode <hashcode0f@gmail.com>
+Date: Tue, 13 Dec 2016 15:51:16 -0800
+Subject: [PATCH 2/3] fix denials for rootfs:lnk_file
+
+Since android-7.1.1 I'm seeing denials for any domain accessing the
+/vendor symlink.  Apparently related to getattr.  Not sure which
+commit caused the denials, but we are probably ok allowing getattr
+on rootfs:lnk_file.  The commit adds it.
+
+sample dmesg lines:
+type=1400 audit(1481572084.260:4): avc: denied { getattr } for pid=294 comm="sysinit" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:sysinit:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.680:5): avc: denied { getattr } for pid=379 comm="90userinit" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:sysinit:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.860:6): avc: denied { getattr } for pid=493 comm="wan_start" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:startril:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.890:7): avc: denied { getattr } for pid=506 comm="audioserver" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:audioserver:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.900:8): avc: denied { getattr } for pid=510 comm="mediacodec" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:mediacodec:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.970:9): avc: denied { getattr } for pid=511 comm="mediadrmserver" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:mediadrmserver:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572085.070:10): avc: denied { getattr } for pid=543 comm="ath6kl-service" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:ath6kl-service:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+type=1400 audit(1481572084.770:11): avc: denied { getattr } for pid=829 comm="bootanimation" path="/vendor" dev="rootfs" ino=5603 scontext=u:r:bootanim:s0 tcontext=u:object_r:rootfs:s0 tclass=lnk_file permissive=0
+
+Change-Id: Icfafadf18cbe29e3ca0316149d97e6ea24274941
+---
+ domain.te | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/domain.te b/domain.te
+index e014ad2..ebea445 100644
+--- a/domain.te
++++ b/domain.te
+@@ -62,7 +62,7 @@ allow domain debuggerd:unix_stream_socket connectto;
+ 
+ # Root fs.
+ allow domain rootfs:dir search;
+-allow domain rootfs:lnk_file read;
++allow domain rootfs:lnk_file { read getattr };
+ 
+ # Device accesses.
+ allow domain device:dir search;
+-- 
+2.7.4
+

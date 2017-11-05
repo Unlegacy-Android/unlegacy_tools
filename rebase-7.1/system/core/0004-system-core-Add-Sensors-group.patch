@@ -1,0 +1,38 @@
+From 7059dc84890bd96895b25a1b8e59fd6cace7d5cc Mon Sep 17 00:00:00 2001
+From: Satya Durga Srinivasu Prabhala <satyap@codeaurora.org>
+Date: Fri, 10 Jul 2015 17:31:50 -0700
+Subject: [PATCH 4/8] system: core: Add Sensors group
+
+Defining group for sensors.
+
+CRs-Fixed: 431081
+
+Change-Id: I58151f2fd727bded1b16adb3caeac85e27e44036
+---
+ include/private/android_filesystem_config.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/private/android_filesystem_config.h b/include/private/android_filesystem_config.h
+index 5ccd80e..ed8ae35 100644
+--- a/include/private/android_filesystem_config.h
++++ b/include/private/android_filesystem_config.h
+@@ -121,6 +121,8 @@
+ /* The range 5000-5999 is also reserved for OEM, and must never be used here. */
+ #define AID_OEM_RESERVED_2_START 5000
+ #define AID_OEM_RESERVED_2_END   5999
++#define AID_SENSORS       3011 /* access to /dev/socket/sensor_ctl_socket & QCCI/QCSI */
++
+ 
+ #define AID_EVERYBODY     9997  /* shared between all apps in the same profile */
+ #define AID_MISC          9998  /* access to misc storage */
+@@ -222,6 +224,7 @@ static const struct android_id_info android_ids[] = {
+     { "net_bt_stack",  AID_NET_BT_STACK, },
+     { "readproc",      AID_READPROC, },
+     { "wakelock",      AID_WAKELOCK, },
++    { "sensors",       AID_SENSORS, },
+ 
+     { "everybody",     AID_EVERYBODY, },
+     { "misc",          AID_MISC, },
+-- 
+2.7.4
+

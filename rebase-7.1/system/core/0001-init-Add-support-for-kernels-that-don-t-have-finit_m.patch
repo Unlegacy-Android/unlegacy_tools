@@ -1,0 +1,85 @@
+From f6c897effcebe8352a71347de687de4c16947407 Mon Sep 17 00:00:00 2001
+From: DodoGTA GT <aidas957@gmail.com>
+Date: Sun, 16 Oct 2016 08:08:31 +0300
+Subject: [PATCH 1/8] init: Add support for kernels that don't have
+ finit_module
+
+Some kernels don't have finit_module, which makes booting Android 7.0
+impossible if people can't backport it themselves, so set
+KERNEL_HAS_FINIT_MODULE := false in BoardConfig.mk file to
+allow booting 7.0 even when the kernel doesn't have finit_
+module :)
+
+Change-Id: Iec63c1846cdc5e5bb3b61610ea438cf8eff8635b
+---
+ init/Android.mk   |  4 ++++
+ init/builtins.cpp | 16 ++++++++++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/init/Android.mk b/init/Android.mk
+index 67541b8..85bb664 100644
+--- a/init/Android.mk
++++ b/init/Android.mk
+@@ -72,6 +72,10 @@ LOCAL_SRC_FILES:= \
+     ueventd_parser.cpp \
+     watchdogd.cpp \
+ 
++ifeq ($(KERNEL_HAS_FINIT_MODULE), false)
++LOCAL_CFLAGS += -DNO_FINIT_MODULE
++endif
++
+ LOCAL_MODULE:= init
+ LOCAL_C_INCLUDES += \
+     system/extras/ext4_utils \
+diff --git a/init/builtins.cpp b/init/builtins.cpp
+index 44217f0..11756c5 100644
+--- a/init/builtins.cpp
++++ b/init/builtins.cpp
+@@ -29,7 +29,9 @@
+ #include <sys/socket.h>
+ #include <sys/mount.h>
+ #include <sys/resource.h>
++#ifndef NO_FINIT_MODULE
+ #include <sys/syscall.h>
++#endif
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -67,20 +69,34 @@
+ #define UNMOUNT_CHECK_MS 5000
+ #define UNMOUNT_CHECK_TIMES 10
+ 
++#ifdef NO_FINIT_MODULE
++// System call provided by bionic but not in any header file.
++extern "C" int init_module(void *, unsigned long, const char *);
++#endif
++
+ static const int kTerminateServiceDelayMicroSeconds = 50000;
+ 
+ static int insmod(const char *filename, const char *options) {
++#ifndef NO_FINIT_MODULE
+     int fd = open(filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+     if (fd == -1) {
+         ERROR("insmod: open(\"%s\") failed: %s", filename, strerror(errno));
++#else
++    std::string module;
++    if (!read_file(filename, &module)) {
++#endif
+         return -1;
+     }
++#ifndef NO_FINIT_MODULE
+     int rc = syscall(__NR_finit_module, fd, options, 0);
+     if (rc == -1) {
+         ERROR("finit_module for \"%s\" failed: %s", filename, strerror(errno));
+     }
+     close(fd);
+     return rc;
++#else
++    return init_module(&module[0], module.size(), options);
++#endif
+ }
+ 
+ static int __ifupdown(const char *interface, int up) {
+-- 
+2.7.4
+

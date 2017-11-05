@@ -1,0 +1,28 @@
+From 575cbbc1762c45539d49de799b3038e6c36847dd Mon Sep 17 00:00:00 2001
+From: Tom Marshall <tdm@cyngn.com>
+Date: Fri, 16 May 2014 13:46:24 -0700
+Subject: [PATCH 15/20] build: Set ccache base to build top
+
+This enables ccache sharing between different build tree paths.
+
+Change-Id: I99636bdd2779a6ccf0649f027e35cf67df44b6ae
+---
+ core/ccache.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/ccache.mk b/core/ccache.mk
+index 5c2ae23..da2c1ae 100644
+--- a/core/ccache.mk
++++ b/core/ccache.mk
+@@ -30,7 +30,7 @@ ifneq ($(filter-out false,$(USE_CCACHE)),)
+   # We don't really use system headers much so the rootdir is
+   # fine; ensures these paths are relative for all Android trees
+   # on a workstation.
+-  export CCACHE_BASEDIR := /
++  export CCACHE_BASEDIR := $(ANDROID_BUILD_TOP)
+ 
+   # Workaround for ccache with clang.
+   # See http://petereisentraut.blogspot.com/2011/09/ccache-and-clang-part-2.html
+-- 
+2.7.4
+

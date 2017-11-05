@@ -1,0 +1,33 @@
+From f13344b8b738afb4e3eb9ade5d8884e346c43772 Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Sun, 12 Apr 2015 21:02:20 +0200
+Subject: [PATCH 1/3] libstagefright: add missing TI color format case
+
+Change-Id: Iaca45e6b15d3315a39b51bbf7f0cf3a1e912fee9
+---
+ media/libstagefright/ACodec.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
+index cd2408b..88b7e92 100644
+--- a/media/libstagefright/ACodec.cpp
++++ b/media/libstagefright/ACodec.cpp
+@@ -3842,6 +3842,7 @@ bool ACodec::describeDefaultColorFormat(DescribeColorFormatParams &params) {
+         fmt != OMX_COLOR_FormatYUV420PackedPlanar &&
+         fmt != OMX_COLOR_FormatYUV420SemiPlanar &&
+         fmt != OMX_COLOR_FormatYUV420PackedSemiPlanar &&
++        fmt != OMX_TI_COLOR_FormatYUV420PackedSemiPlanar &&
+         fmt != HAL_PIXEL_FORMAT_YV12) {
+         ALOGW("do not know color format 0x%x = %d", fmt, fmt);
+         return false;
+@@ -3914,6 +3915,7 @@ bool ACodec::describeDefaultColorFormat(DescribeColorFormatParams &params) {
+         case OMX_COLOR_FormatYUV420SemiPlanar:
+             // FIXME: NV21 for sw-encoder, NV12 for decoder and hw-encoder
+         case OMX_COLOR_FormatYUV420PackedSemiPlanar:
++        case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
+             // NV12
+             image.mPlane[image.U].mOffset = params.nStride * params.nSliceHeight;
+             image.mPlane[image.U].mColInc = 2;
+-- 
+2.7.4
+

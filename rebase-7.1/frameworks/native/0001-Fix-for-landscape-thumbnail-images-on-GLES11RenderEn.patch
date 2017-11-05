@@ -1,0 +1,50 @@
+From 17ccd1b09b304181927e11d2be296797e66af5a3 Mon Sep 17 00:00:00 2001
+From: chaochen <c.chen@sta.samsung.com>
+Date: Wed, 19 Nov 2014 17:14:00 -0800
+Subject: [PATCH 1/8] Fix for landscape thumbnail images on GLES11RenderEngine
+
+Change-Id: If825345be2c30645c7b87258b7e24d6009f3090a
+Signed-off-by: Raj Mamadgi <rmamadgi@sta.samsung.com>
+---
+ .../RenderEngine/GLES11RenderEngine.cpp               | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/services/surfaceflinger/RenderEngine/GLES11RenderEngine.cpp b/services/surfaceflinger/RenderEngine/GLES11RenderEngine.cpp
+index 847cdb3..6f5f9fd 100644
+--- a/services/surfaceflinger/RenderEngine/GLES11RenderEngine.cpp
++++ b/services/surfaceflinger/RenderEngine/GLES11RenderEngine.cpp
+@@ -92,14 +92,29 @@ void GLES11RenderEngine::setViewportAndProjection(
+         case Transform::ROT_0:
+             break;
+         case Transform::ROT_90:
+-            glRotatef(90, 0, 0, 1);
++        {
++            float x1 = (l+r)/2;
++            float y1 = (t+b)/2;
++            glTranslatef(x1-y1, x1+y1, 0);
++            glRotatef(270, 0, 0, 1);
+             break;
++        }
+         case Transform::ROT_180:
++        {
++            float x1 = (l+r)/2;
++            float y1 = (t+b)/2;
++            glTranslatef(x1*2, y1*2, 0);
+             glRotatef(180, 0, 0, 1);
+             break;
++        }
+         case Transform::ROT_270:
+-            glRotatef(270, 0, 0, 1);
++        {
++            float x1 = (l+r)/2;
++            float y1 = (t+b)/2;
++            glTranslatef(x1+y1, y1-x1, 0);
++            glRotatef(90, 0, 0, 1);
+             break;
++        }
+         default:
+             break;
+     }
+-- 
+2.7.4
+

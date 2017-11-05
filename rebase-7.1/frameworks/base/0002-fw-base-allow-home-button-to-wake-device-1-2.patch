@@ -1,0 +1,82 @@
+From 8f5f7d7fba7df75d1c595675557294010286e846 Mon Sep 17 00:00:00 2001
+From: Danny Baumann <dannybaumann@web.de>
+Date: Sun, 30 Nov 2014 23:04:37 -0600
+Subject: [PATCH 2/6] fw/base: allow home button to wake device [1/2]
+
+Change-Id: I2b79561dcfa7e569b2e24bbabfffb11517d4d313
+
+Conflicts:
+	core/java/android/provider/Settings.java
+	services/core/java/com/android/server/policy/PhoneWindowManager.java
+---
+ core/java/android/provider/Settings.java                  |  6 ++++++
+ .../com/android/server/policy/PhoneWindowManager.java     | 15 +++++++++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index a8209af..4766d33 100755
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -3559,6 +3559,12 @@ public final class Settings {
+         public static final Validator LOCK_TO_APP_ENABLED_VALIDATOR = sBooleanValidator;
+ 
+         /**
++         * Whether to wake the screen with the home key, the value is boolean.
++         * @hide
++         */
++        public static final String HOME_WAKE_SCREEN = "home_wake_screen";
++
++        /**
+          * I am the lolrus.
+          * <p>
+          * Nonzero values indicate that the user has a bukkit.
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 889c52a..6dd763f 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -491,6 +491,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     boolean mTranslucentDecorEnabled = true;
+     boolean mUseTvRouting;
+ 
++    // Behavior of home wake
++    boolean mHomeWakeScreen;
++
+     int mPointerLocationMode = 0; // guarded by mLock
+ 
+     // The last window we were told about in focusChanged.
+@@ -877,6 +880,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             resolver.registerContentObserver(Settings.Global.getUriFor(
+                     Settings.Global.POLICY_CONTROL), false, this,
+                     UserHandle.USER_ALL);
++            resolver.registerContentObserver(Settings.System.getUriFor(
++                    Settings.System.HOME_WAKE_SCREEN), false, this,
++                    UserHandle.USER_ALL);
++
+             updateSettings();
+         }
+ 
+@@ -2067,6 +2074,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     Settings.Secure.INCALL_BACK_BUTTON_BEHAVIOR,
+                     Settings.Secure.INCALL_BACK_BUTTON_BEHAVIOR_DEFAULT,
+                     UserHandle.USER_CURRENT);
++            mHomeWakeScreen = (Settings.System.getIntForUser(resolver,
++                    Settings.System.HOME_WAKE_SCREEN, 1, UserHandle.USER_CURRENT) == 1);
+ 
+             // Configure wake gesture.
+             boolean wakeGestureEnabledSetting = Settings.Secure.getIntForUser(resolver,
+@@ -5884,6 +5893,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                 break;
+             }
+ 
++            case KeyEvent.KEYCODE_HOME:
++                if (down && !interactive && mHomeWakeScreen) {
++                    isWakeKey = true;
++                }
++                break;
++
+             case KeyEvent.KEYCODE_ENDCALL: {
+                 result &= ~ACTION_PASS_TO_USER;
+                 if (down) {
+-- 
+2.7.4
+

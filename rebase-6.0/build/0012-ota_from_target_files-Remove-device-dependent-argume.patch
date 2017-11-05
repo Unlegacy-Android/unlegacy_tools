@@ -1,0 +1,99 @@
+From 8a09ef11a783fa7d0074649d8b74b9fa74e3f7bd Mon Sep 17 00:00:00 2001
+From: Gabriele M <moto.falcon.git@gmail.com>
+Date: Tue, 10 Jan 2017 23:14:12 +0100
+Subject: [PATCH 12/12] ota_from_target_files: Remove device dependent
+ arguments
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+These device-specific arguments are defined at build time and are
+necessary to generate the zip correctly. Don't use command line
+arguments to specify them, but write all the needed information
+in misc_info.txt when the target-files zip is generated.
+ota_from_target_files will then read misc_info.txt and set
+everything automatically.
+
+Change-Id: Ibdbca575b76eb07b53fccfcea52a351c7e333f91
+Signed-off-by: André Pinela <sheffzor@gmail.com>
+---
+ core/Makefile                               | 6 +++---
+ tools/releasetools/ota_from_target_files.py | 9 +++------
+ 2 files changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 250def2..0712827 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1545,6 +1545,7 @@ ifneq ($(OEM_THUMBPRINT_PROPERTIES),)
+ 	# OTA scripts are only interested in fingerprint related properties
+ 	$(hide) echo "oem_fingerprint_properties=$(OEM_THUMBPRINT_PROPERTIES)" >> $(zip_root)/META/misc_info.txt
+ endif
++	$(hide) echo "ota_override_device=$(OTA_SCRIPT_OVERRIDE_DEVICE)" >> $(zip_root)/META/misc_info.txt
+ 	$(call generate-userimage-prop-dictionary, $(zip_root)/META/misc_info.txt)
+ 	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+ 	    ./build/tools/releasetools/make_recovery_patch $(zip_root) $(zip_root)
+@@ -1586,9 +1587,9 @@ INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
+ $(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
+ 
+ ifeq ($(TARGET_OTA_ASSERT_DEVICE),)
+-    $(INTERNAL_OTA_PACKAGE_TARGET): override_device := auto
++    OTA_SCRIPT_OVERRIDE_DEVICE := auto
+ else
+-    $(INTERNAL_OTA_PACKAGE_TARGET): override_device := $(TARGET_OTA_ASSERT_DEVICE)
++    OTA_SCRIPT_OVERRIDE_DEVICE := $(TARGET_OTA_ASSERT_DEVICE)
+ endif
+ 
+ ifeq ($(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT),)
+@@ -1604,7 +1605,6 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+ 	   --block \
+ 	   -p $(HOST_OUT) \
+ 	   -k $(KEY_CERT_PAIR) \
+-	   --override_device=$(override_device) \
+ 	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
+ 	   $(BUILT_TARGET_FILES_PACKAGE) $@
+ ifneq ($(TARGET_CUSTOM_RELEASETOOL),)
+diff --git a/tools/releasetools/ota_from_target_files.py b/tools/releasetools/ota_from_target_files.py
+index 7bd4252..17d7a67 100755
+--- a/tools/releasetools/ota_from_target_files.py
++++ b/tools/releasetools/ota_from_target_files.py
+@@ -93,9 +93,6 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
+       Specifies the threshold that will be used to compute the maximum
+       allowed stash size (defaults to 0.8).
+ 
+-  --override_device <device>
+-      Override device-specific asserts. Can be a comma-separated list.
+-
+ """
+ 
+ import sys
+@@ -1567,8 +1564,6 @@ def main(argv):
+       except ValueError:
+         raise ValueError("Cannot parse value %r for option %r - expecting "
+                          "a float" % (a, o))
+-    elif o in ("--override_device"):
+-      OPTIONS.override_device = a
+     else:
+       return False
+     return True
+@@ -1594,7 +1589,6 @@ def main(argv):
+                                  "verify",
+                                  "no_fallback_to_full",
+                                  "stash_threshold=",
+-                                 "override_device=",
+                              ], extra_option_handler=option_handler)
+ 
+   if len(args) != 2:
+@@ -1610,6 +1604,9 @@ def main(argv):
+   OPTIONS.target_tmp = OPTIONS.input_tmp
+   OPTIONS.info_dict = common.LoadInfoDict(input_zip)
+ 
++  if "ota_override_device" in OPTIONS.info_dict:
++    OPTIONS.override_device = OPTIONS.info_dict.get("ota_override_device")
++
+   # If this image was originally labelled with SELinux contexts, make sure we
+   # also apply the labels in our new image. During building, the "file_contexts"
+   # is in the out/ directory tree, but for repacking from target-files.zip it's
+-- 
+2.7.4
+

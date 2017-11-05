@@ -1,0 +1,28 @@
+From 680d85df9da574476a125767866a260c8012cbd4 Mon Sep 17 00:00:00 2001
+From: Steve Kondik <steve@cyngn.com>
+Date: Mon, 10 Nov 2014 09:35:06 -0800
+Subject: [PATCH 2/3] keymaster: Add kernel dependency
+
+Change-Id: I6ff0b7995ac19d272c088e6210638cdcd48bc4de
+---
+ Android.mk | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Android.mk b/Android.mk
+index 04f6e74..a56b7ad 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -25,7 +25,9 @@ LOCAL_SHARED_LIBRARIES := \
+         libc \
+         libdl
+ 
+-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
++LOCAL_ADDITIONAL_DEPENDENCIES := \
++    $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr \
++    $(LOCAL_PATH)/Android.mk
+ 
+ LOCAL_MODULE_TAGS := optional
+ 
+-- 
+2.7.4
+

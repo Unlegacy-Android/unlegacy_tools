@@ -1,0 +1,120 @@
+From 26235ca040b5bac3482179b043fa97008948ef30 Mon Sep 17 00:00:00 2001
+From: Sultan Qasim Khan <sultanqasim@gmail.com>
+Date: Mon, 7 Sep 2015 01:30:17 -0400
+Subject: [PATCH 3/8] fs_mgr: zram: allow specifying stream count
+
+This parameter allows specifying the number of parallel streams
+to be used in compression and decompression. This option was added
+in Linux 3.15, so it is not very common among devices currently on
+the market, but it has been backported to some kernels. This option
+must be set before zRAM is activated, as the kernel does not allow
+switching from single stream to multistream compression once zRAM
+is active.
+
+Change-Id: I3f5ad96a65b3b4a6915d2700c398a236ea8931b0
+---
+ fs_mgr/fs_mgr.c         | 9 +++++++++
+ fs_mgr/fs_mgr_fstab.c   | 6 ++++++
+ fs_mgr/fs_mgr_priv.h    | 1 +
+ fs_mgr/include/fs_mgr.h | 1 +
+ 4 files changed, 17 insertions(+)
+
+diff --git a/fs_mgr/fs_mgr.c b/fs_mgr/fs_mgr.c
+index 387f708..0ad35c4 100644
+--- a/fs_mgr/fs_mgr.c
++++ b/fs_mgr/fs_mgr.c
+@@ -60,6 +60,7 @@
+ #define FSCK_LOG_FILE   "/dev/fscklogs/log"
+ 
+ #define ZRAM_CONF_DEV   "/sys/block/zram0/disksize"
++#define ZRAM_STREAMS    "/sys/block/zram0/max_comp_streams"
+ 
+ #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
+ 
+@@ -812,6 +813,14 @@ int fs_mgr_swapon_all(struct fstab *fstab)
+              */
+             FILE *zram_fp;
+ 
++            /* The stream count parameter is only available on new kernels.
++             * It must be set before the disk size. */
++            zram_fp = fopen(ZRAM_STREAMS, "r+");
++            if (zram_fp) {
++                fprintf(zram_fp, "%d\n", fstab->recs[i].zram_streams);
++                fclose(zram_fp);
++            }
++
+             zram_fp = fopen(ZRAM_CONF_DEV, "r+");
+             if (zram_fp == NULL) {
+                 ERROR("Unable to open zram conf device %s\n", ZRAM_CONF_DEV);
+diff --git a/fs_mgr/fs_mgr_fstab.c b/fs_mgr/fs_mgr_fstab.c
+index 9225d34..44367ed 100644
+--- a/fs_mgr/fs_mgr_fstab.c
++++ b/fs_mgr/fs_mgr_fstab.c
+@@ -32,6 +32,7 @@ struct fs_mgr_flag_values {
+     int partnum;
+     int swap_prio;
+     unsigned int zram_size;
++    unsigned int zram_streams;
+     unsigned int file_encryption_mode;
+ };
+ 
+@@ -80,6 +81,7 @@ static struct flag_list fs_mgr_flags[] = {
+     { "slotselect",  MF_SLOTSELECT },
+     { "nofail",      MF_NOFAIL },
+     { "latemount",   MF_LATEMOUNT },
++    { "zramstreams=",MF_ZRAMSTREAMS },
+     { "defaults",    0 },
+     { 0,             0 },
+ };
+@@ -121,6 +123,7 @@ static int parse_flags(char *flags, struct flag_list *fl,
+         memset(flag_vals, 0, sizeof(*flag_vals));
+         flag_vals->partnum = -1;
+         flag_vals->swap_prio = -1; /* negative means it wasn't specified. */
++        flag_vals->zram_streams = 1;
+     }
+ 
+     /* initialize fs_options to the null string */
+@@ -213,6 +216,8 @@ static int parse_flags(char *flags, struct flag_list *fl,
+                         flag_vals->zram_size = calculate_zram_size(val);
+                     else
+                         flag_vals->zram_size = val;
++                } else if ((fl[i].flag == MF_ZRAMSTREAMS) && flag_vals) {
++                    flag_vals->zram_streams = strtoll(strchr(p, '=') + 1, NULL, 0);
+                 }
+                 break;
+             }
+@@ -364,6 +369,7 @@ struct fstab *fs_mgr_read_fstab(const char *fstab_path)
+         fstab->recs[cnt].partnum = flag_vals.partnum;
+         fstab->recs[cnt].swap_prio = flag_vals.swap_prio;
+         fstab->recs[cnt].zram_size = flag_vals.zram_size;
++        fstab->recs[cnt].zram_streams = flag_vals.zram_streams;
+         fstab->recs[cnt].file_encryption_mode = flag_vals.file_encryption_mode;
+         cnt++;
+     }
+diff --git a/fs_mgr/fs_mgr_priv.h b/fs_mgr/fs_mgr_priv.h
+index 120ec5a..21233b7 100644
+--- a/fs_mgr/fs_mgr_priv.h
++++ b/fs_mgr/fs_mgr_priv.h
+@@ -86,6 +86,7 @@ __BEGIN_DECLS
+ #define MF_LATEMOUNT    0x20000
+ #define MF_NOFAIL       0x40000
+ #define MF_VERIFYATBOOT 0x80000
++#define MF_ZRAMSTREAMS  0x100000
+ 
+ #define DM_BUF_SIZE 4096
+ 
+diff --git a/fs_mgr/include/fs_mgr.h b/fs_mgr/include/fs_mgr.h
+index 7565965..e796bdd 100644
+--- a/fs_mgr/include/fs_mgr.h
++++ b/fs_mgr/include/fs_mgr.h
+@@ -72,6 +72,7 @@ struct fstab_rec {
+     int partnum;
+     int swap_prio;
+     unsigned int zram_size;
++    unsigned int zram_streams;
+     unsigned int file_encryption_mode;
+ };
+ 
+-- 
+2.7.4
+

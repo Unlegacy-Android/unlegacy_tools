@@ -1,0 +1,28 @@
+From 5670337ee4b430cdf30789c45ecf058939b02c00 Mon Sep 17 00:00:00 2001
+From: Dan Pasanen <invisiblek@cyanogenmod.org>
+Date: Mon, 5 Sep 2016 18:38:05 -0500
+Subject: [PATCH 06/20] build: remove dotfiles on a make clean as well
+
+* kati & ninja create dotfiles (example: .ninja_log) in out/
+
+Change-Id: I83ffd1c26a37f7ffef45fd4598435db93058ab67
+---
+ core/main.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/main.mk b/core/main.mk
+index a612f83..24e3d66 100644
+--- a/core/main.mk
++++ b/core/main.mk
+@@ -1112,7 +1112,7 @@ findbugs: $(INTERNAL_FINDBUGS_HTML_TARGET) $(INTERNAL_FINDBUGS_XML_TARGET)
+ 
+ .PHONY: clean
+ clean:
+-	@rm -rf $(OUT_DIR)/*
++	@rm -rf $(OUT_DIR)/* $(OUT_DIR)/..?* $(OUT_DIR)/.[!.]*
+ 	@echo "Entire build directory removed."
+ 
+ .PHONY: clobber
+-- 
+2.7.4
+

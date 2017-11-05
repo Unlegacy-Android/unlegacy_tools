@@ -1,0 +1,55 @@
+From 6cb3defc10f46ed494a09ad819aed55ab6ec7068 Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Tue, 21 Apr 2015 15:07:13 +0200
+Subject: [PATCH 3/3] libstagefright: wfd: don't use intra macroblock refresh
+ mode on omap4
+
+Most, if not all OMAP4 Ducatis doesn't support intra macroblock refresh mode,
+causing the encoder to fail initializing.
+This patch disables intra macroblock refresh mode for wifi display on omap4.
+
+Note:
+Ideally, the decoder shouldn't fail if intra macroblock refresh mode can't be
+configured. However, that would trick higher layers into thinking that it's on,
+because they set that parameter.
+As of now, this mode seems to only ever be used for wifi display.
+
+Change-Id: I9696af8f22db82cc436a351e4d93bf7323588f43
+---
+ media/libstagefright/wifi-display/Android.mk           | 4 ++++
+ media/libstagefright/wifi-display/source/Converter.cpp | 2 ++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/media/libstagefright/wifi-display/Android.mk b/media/libstagefright/wifi-display/Android.mk
+index fb28624..b97351c 100644
+--- a/media/libstagefright/wifi-display/Android.mk
++++ b/media/libstagefright/wifi-display/Android.mk
+@@ -33,6 +33,10 @@ LOCAL_SHARED_LIBRARIES:= \
+ LOCAL_CFLAGS += -Wno-multichar -Werror -Wall
+ LOCAL_CLANG := true
+ 
++ifeq ($(TARGET_BOARD_PLATFORM),omap4)
++LOCAL_CFLAGS += -DBOARD_NO_INTRA_MACROBLOCK_MODE_SUPPORT
++endif
++
+ LOCAL_MODULE:= libstagefright_wfd
+ 
+ LOCAL_MODULE_TAGS:= optional
+diff --git a/media/libstagefright/wifi-display/source/Converter.cpp b/media/libstagefright/wifi-display/source/Converter.cpp
+index 471152e..9a2d08a 100644
+--- a/media/libstagefright/wifi-display/source/Converter.cpp
++++ b/media/libstagefright/wifi-display/source/Converter.cpp
+@@ -173,8 +173,10 @@ status_t Converter::initEncoder() {
+         mOutputFormat->setInt32("frame-rate", 30);
+         mOutputFormat->setInt32("i-frame-interval", 15);  // Iframes every 15 secs
+ 
++#ifndef BOARD_NO_INTRA_MACROBLOCK_MODE_SUPPORT
+         // Configure encoder to use intra macroblock refresh mode
+         mOutputFormat->setInt32("intra-refresh-mode", OMX_VIDEO_IntraRefreshCyclic);
++#endif
+ 
+         int width, height, mbs;
+         if (!mOutputFormat->findInt32("width", &width)
+-- 
+2.7.4
+

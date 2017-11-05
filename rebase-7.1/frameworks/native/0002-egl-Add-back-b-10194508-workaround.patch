@@ -1,0 +1,70 @@
+From e328bbcae2fe5905fa59dc08b7ef30f5c9dbf767 Mon Sep 17 00:00:00 2001
+From: Kyle Repinski <repinski23@gmail.com>
+Date: Wed, 10 Jun 2015 18:49:57 -0500
+Subject: [PATCH 2/8] egl: Add back b/10194508 workaround.
+
+This was removed because it did not pass CTS and was applied across the board
+for all OMAP4 devices, but some still-shipping OMAP4 devices don't need it
+due to using DDK 1.12 drivers. Those drivers are only for OMAP4470 though,
+and other devices besides OMAPs depend on this workaround too, and we don't
+care about CTS for them anyway.
+
+This patch adds this previously-long-standing behavior (EGL_NATIVE_VISUAL_ID)
+back under the opt-in BOARD_EGL_WORKAROUND_BUG_10194508 flag.
+
+Change-Id: Ie611634952a35dc756f1de806c850235caf73544
+---
+ opengl/libs/Android.mk     |  3 +++
+ opengl/libs/EGL/eglApi.cpp | 13 ++++++++++---
+ 2 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/opengl/libs/Android.mk b/opengl/libs/Android.mk
+index 24e4c19..f878cf4 100644
+--- a/opengl/libs/Android.mk
++++ b/opengl/libs/Android.mk
+@@ -45,6 +45,9 @@ LOCAL_CFLAGS += -fvisibility=hidden
+ ifeq ($(BOARD_ALLOW_EGL_HIBERNATION),true)
+   LOCAL_CFLAGS += -DBOARD_ALLOW_EGL_HIBERNATION
+ endif
++ifeq ($(BOARD_EGL_WORKAROUND_BUG_10194508),true)
++  LOCAL_CFLAGS += -DWORKAROUND_BUG_10194508
++endif
+ ifneq ($(MAX_EGL_CACHE_ENTRY_SIZE),)
+   LOCAL_CFLAGS += -DMAX_EGL_CACHE_ENTRY_SIZE=$(MAX_EGL_CACHE_ENTRY_SIZE)
+ endif
+diff --git a/opengl/libs/EGL/eglApi.cpp b/opengl/libs/EGL/eglApi.cpp
+index 436ea30..58b625e 100644
+--- a/opengl/libs/EGL/eglApi.cpp
++++ b/opengl/libs/EGL/eglApi.cpp
+@@ -487,11 +487,17 @@ EGLSurface eglCreateWindowSurface(  EGLDisplay dpy, EGLConfig config,
+         // of our native format. So if sRGB gamma is requested, we have to
+         // modify the EGLconfig's format before setting the native window's
+         // format.
+-
+-        // by default, just pick RGBA_8888
+-        EGLint format = HAL_PIXEL_FORMAT_RGBA_8888;
++        EGLint format;
+         android_dataspace dataSpace = HAL_DATASPACE_UNKNOWN;
+ 
++#ifdef WORKAROUND_BUG_10194508
++        if (!cnx->egl.eglGetConfigAttrib(iDpy, config, EGL_NATIVE_VISUAL_ID,
++                &format)) {
++            ALOGE("eglGetConfigAttrib(EGL_NATIVE_VISUAL_ID) failed: %#x",
++                    eglGetError());
++            format = 0;
++        }
++#else
+         EGLint a = 0;
+         cnx->egl.eglGetConfigAttrib(iDpy, config, EGL_ALPHA_SIZE, &a);
+         if (a > 0) {
+@@ -510,6 +516,7 @@ EGLSurface eglCreateWindowSurface(  EGLDisplay dpy, EGLConfig config,
+                 format = HAL_PIXEL_FORMAT_RGBX_8888;
+             }
+         }
++#endif
+ 
+         // now select a corresponding sRGB format if needed
+         if (attrib_list && dp->haveExtension("EGL_KHR_gl_colorspace")) {
+-- 
+2.7.4
+

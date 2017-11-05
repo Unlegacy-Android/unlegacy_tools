@@ -1,0 +1,82 @@
+From a222e0f78fe64b49bc07b128fea14863e1bed752 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Sun, 18 Sep 2016 10:48:17 +0200
+Subject: [PATCH 1/3] sepolicy: Allow optional platform text relocations
+
+Change-Id: Ibcf8a1014c8fcfdc33ea26e1e852bc5f58d20af6
+Signed-off-by: Ziyan <jaraidaniel@gmail.com>
+---
+ Android.mk |  2 ++
+ domain.te  | 29 +++++++++++++++++++++--------
+ 2 files changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/Android.mk b/Android.mk
+index 0bfa54d..e7fa8fd 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -95,6 +95,7 @@ $(sepolicy_policy.conf): $(call build_policy, $(sepolicy_build_files))
+ 	$(hide) m4 $(PRIVATE_ADDITIONAL_M4DEFS) \
+ 		-D mls_num_sens=$(PRIVATE_MLS_SENS) -D mls_num_cats=$(PRIVATE_MLS_CATS) \
+ 		-D target_build_variant=$(TARGET_BUILD_VARIANT) \
++		-D target_needs_platform_text_relocations=$(TARGET_NEEDS_PLATFORM_TEXTRELS) \
+ 		-s $^ > $@
+ 	$(hide) sed '/dontaudit/d' $@ > $@.dontaudit
+ 
+@@ -134,6 +135,7 @@ $(sepolicy_policy_recovery.conf): $(call build_policy, $(sepolicy_build_files))
+ 		-D mls_num_sens=$(PRIVATE_MLS_SENS) -D mls_num_cats=$(PRIVATE_MLS_CATS) \
+ 		-D target_build_variant=$(TARGET_BUILD_VARIANT) \
+ 		-D target_recovery=true \
++		-D target_needs_platform_text_relocations=$(TARGET_NEEDS_PLATFORM_TEXTRELS) \
+ 		-s $^ > $@
+ 
+ $(LOCAL_BUILT_MODULE): $(sepolicy_policy_recovery.conf) $(HOST_OUT_EXECUTABLES)/checkpolicy $(HOST_OUT_EXECUTABLES)/sepolicy-analyze
+diff --git a/domain.te b/domain.te
+index 45569de..e014ad2 100644
+--- a/domain.te
++++ b/domain.te
+@@ -428,13 +428,24 @@ neverallow { domain userdebug_or_eng(`-dumpstate -shell -su') } su_exec:file no_
+ # The only exceptions are for NDK text relocations associated with
+ # https://code.google.com/p/android/issues/detail?id=23203
+ # which, long term, need to go away.
+-neverallow * {
+-  file_type
+-  -system_data_file
+-  -apk_data_file
+-  -app_data_file
+-  -asec_public_file
+-}:file execmod;
++ifelse(target_needs_platform_text_relocations, `true',
++  `neverallow * {
++    file_type
++    -system_file
++    -system_data_file
++    -apk_data_file
++    -app_data_file
++    -asec_public_file
++  }:file execmod;'
++,
++  `neverallow * {
++    file_type
++    -system_data_file
++    -apk_data_file
++    -app_data_file
++    -asec_public_file
++  }:file execmod;'
++)
+ 
+ # Do not allow making the stack or heap executable.
+ # We would also like to minimize execmem but it seems to be
+@@ -443,7 +454,9 @@ neverallow * self:process { execstack execheap };
+ 
+ # prohibit non-zygote spawned processes from using shared libraries
+ # with text relocations. b/20013628 .
+-neverallow { domain -appdomain } file_type:file execmod;
++ifelse(target_needs_platform_text_relocations, `true', ,
++  `neverallow { domain -appdomain } file_type:file execmod;'
++)
+ 
+ neverallow { domain -init } proc:{ file dir } mounton;
+ 
+-- 
+2.7.4
+

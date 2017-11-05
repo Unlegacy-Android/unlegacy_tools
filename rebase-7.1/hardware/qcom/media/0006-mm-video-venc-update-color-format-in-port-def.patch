@@ -1,0 +1,30 @@
+From 5d9eaeef083f65684f534750665c2efd2e9ac990 Mon Sep 17 00:00:00 2001
+From: Praveen Chavan <pchavan@codeaurora.org>
+Date: Tue, 16 Dec 2014 06:26:14 -0800
+Subject: [PATCH 06/10] mm-video: venc: update color format in port-def
+
+After the client negotiates color-format via input-port-format,
+update the same color-format in input-port-def for consistency.
+
+b/ 18740250
+
+Change-Id: I2f92824571cb40dbc1b0b3c9ab88e29d8cd3b6cb
+---
+ msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
+index f669dbe..8fb8f6e 100644
+--- a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
++++ b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
+@@ -632,6 +632,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
+ #endif
+         {
+             m_sInPortFormat.eColorFormat = portFmt->eColorFormat;
++            m_sInPortDef.format.video.eColorFormat = portFmt->eColorFormat;
+             m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
+             mUseProxyColorFormat = false;
+         }
+-- 
+2.7.4
+

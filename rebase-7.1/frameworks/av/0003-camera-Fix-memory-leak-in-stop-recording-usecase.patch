@@ -1,0 +1,44 @@
+From 7ded0dd6bb0660ba064a965f6f19eb8628d8f7c9 Mon Sep 17 00:00:00 2001
+From: Sai Kumar Sanagavarapu <ssanagav@codeaurora.org>
+Date: Thu, 21 Jul 2016 13:42:52 +0530
+Subject: [PATCH 3/7] camera: Fix memory leak in stop recording usecase.
+
+Issue:
+1. In CameraSource, if both recording proxy and local camera
+   instances are null, the frames which are supposed to be
+   returned back to Camera, will never be returned, causing
+   memory leak.
+2. If a frame is returned from CameraSource after stop recording
+   is issued, Camera HAL cannot handle it because by that time
+   it will be previewing state.
+
+Fix:
+1. Since camera handles are not available, close the native handle
+   in CameraSource itself.
+2. Close the duped native handles in cameraservice instead of
+   delegating the responsibility to Camera HAL.
+
+Bug: 30299751
+CRs-Fixed: 1040448
+Change-Id: I45a351d0813dff15034fa25b79987ceab07232bb
+---
+ services/camera/libcameraservice/api1/CameraClient.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/services/camera/libcameraservice/api1/CameraClient.cpp b/services/camera/libcameraservice/api1/CameraClient.cpp
+index 266fb03..3c2b98a 100644
+--- a/services/camera/libcameraservice/api1/CameraClient.cpp
++++ b/services/camera/libcameraservice/api1/CameraClient.cpp
+@@ -520,6 +520,9 @@ void CameraClient::releaseRecordingFrameHandle(native_handle_t *handle) {
+     metadata->pHandle = handle;
+ 
+     mHardware->releaseRecordingFrame(dataPtr);
++
++    native_handle_close(handle);
++    native_handle_delete(handle);
+ }
+ 
+ status_t CameraClient::setVideoBufferMode(int32_t videoBufferMode) {
+-- 
+2.7.4
+

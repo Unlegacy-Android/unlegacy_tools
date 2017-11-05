@@ -1,0 +1,34 @@
+From cd366c1ab0f901830e4f135b826bcfd14a2615cf Mon Sep 17 00:00:00 2001
+From: Surajit Podder <spodder@codeaurora.org>
+Date: Thu, 9 Jun 2016 17:18:53 +0530
+Subject: [PATCH 09/10] libstagefrighthw: Remove padding in
+ encoder_nativehandle_buffer_type
+
+Padding is no longer needed as native handle is directly passed without
+involving shared memory in framework, and the handle pointer size will
+not cause invalid access while passing handle in a 64 bit process.
+
+Change-Id: I184542e7deb816ac2cb97e39a16c5e4fe83c1eb6
+---
+ msm8974/libstagefrighthw/QComOMXMetadata.h | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/msm8974/libstagefrighthw/QComOMXMetadata.h b/msm8974/libstagefrighthw/QComOMXMetadata.h
+index fd3e03c..cd1ac00 100644
+--- a/msm8974/libstagefrighthw/QComOMXMetadata.h
++++ b/msm8974/libstagefrighthw/QComOMXMetadata.h
+@@ -22,10 +22,7 @@ namespace android {
+ #ifdef USE_NATIVE_HANDLE_SOURCE
+     typedef struct encoder_nativehandle_buffer_type {
+         MetadataBufferType buffer_type;
+-        union {
+-            buffer_handle_t meta_handle;
+-            uint64_t padding;
+-        };
++        buffer_handle_t meta_handle;
+     } encoder_nativehandle_buffer_type;
+ #endif
+ 
+-- 
+2.7.4
+

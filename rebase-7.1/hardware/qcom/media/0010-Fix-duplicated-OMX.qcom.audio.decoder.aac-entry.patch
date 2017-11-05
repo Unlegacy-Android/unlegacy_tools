@@ -1,0 +1,568 @@
+From 8730296ecac20edf4853b70103e63c0123bf6714 Mon Sep 17 00:00:00 2001
+From: Keith Mok <kmok@cyngn.com>
+Date: Fri, 4 Dec 2015 15:26:23 -0800
+Subject: [PATCH 10/10] Fix duplicated OMX.qcom.audio.decoder.aac entry
+
+There are duplcated aac audio decoder entry in the OMX table.
+This fixes:
+E OMXMaster: A component of name 'OMX.qcom.audio.decoder.aac' already exists, ignoring this one.
+
+Change-Id: I6a6cab63c8bec54528c862c05b22dbb4dace6330
+---
+ msm8974/mm-core/src/8084/qc_registry_table.c           | 16 ----------------
+ msm8974/mm-core/src/8084/qc_registry_table_android.c   | 16 ----------------
+ msm8974/mm-core/src/8226/qc_registry_table.c           | 13 -------------
+ msm8974/mm-core/src/8226/qc_registry_table_android.c   | 13 -------------
+ msm8974/mm-core/src/8610/qc_registry_table.c           | 13 -------------
+ msm8974/mm-core/src/8610/qc_registry_table_android.c   | 13 -------------
+ msm8974/mm-core/src/8960/qc_registry_table_android.c   | 16 ----------------
+ msm8974/mm-core/src/8974/qc_registry_table.c           | 13 -------------
+ msm8974/mm-core/src/8974/qc_registry_table_android.c   | 13 -------------
+ msm8974/mm-core/src/msm8952/registry_table.c           | 13 -------------
+ msm8974/mm-core/src/msm8952/registry_table_android.c   | 13 -------------
+ msm8974/mm-core/src/msm8992/registry_table.c           | 16 ----------------
+ msm8974/mm-core/src/msm8992/registry_table_android.c   | 16 ----------------
+ msm8974/mm-core/src/msm8994/registry_table.c           | 16 ----------------
+ msm8974/mm-core/src/msm8994/registry_table_android.c   | 16 ----------------
+ msm8974/mm-core/src/plutonium/registry_table.c         | 16 ----------------
+ msm8974/mm-core/src/plutonium/registry_table_android.c | 16 ----------------
+ msm8996/mm-core/src/8952/registry_table.c              | 13 -------------
+ msm8996/mm-core/src/8952/registry_table_android.c      | 13 -------------
+ msm8996/mm-core/src/titanium/registry_table.c          | 13 -------------
+ msm8996/mm-core/src/titanium/registry_table_android.c  | 13 -------------
+ 21 files changed, 300 deletions(-)
+
+diff --git a/msm8974/mm-core/src/8084/qc_registry_table.c b/msm8974/mm-core/src/8084/qc_registry_table.c
+index b6c8fee..4891a6b 100644
+--- a/msm8974/mm-core/src/8084/qc_registry_table.c
++++ b/msm8974/mm-core/src/8084/qc_registry_table.c
+@@ -440,22 +440,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/8084/qc_registry_table_android.c b/msm8974/mm-core/src/8084/qc_registry_table_android.c
+index 4d3db7b..f8fe334 100644
+--- a/msm8974/mm-core/src/8084/qc_registry_table_android.c
++++ b/msm8974/mm-core/src/8084/qc_registry_table_android.c
+@@ -488,22 +488,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/8226/qc_registry_table.c b/msm8974/mm-core/src/8226/qc_registry_table.c
+index 157de38..f3bdb25 100755
+--- a/msm8974/mm-core/src/8226/qc_registry_table.c
++++ b/msm8974/mm-core/src/8226/qc_registry_table.c
+@@ -391,19 +391,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/8226/qc_registry_table_android.c b/msm8974/mm-core/src/8226/qc_registry_table_android.c
+index a45681b..2df8f7d 100755
+--- a/msm8974/mm-core/src/8226/qc_registry_table_android.c
++++ b/msm8974/mm-core/src/8226/qc_registry_table_android.c
+@@ -431,19 +431,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/8610/qc_registry_table.c b/msm8974/mm-core/src/8610/qc_registry_table.c
+index 0a9a9aa..006c398 100755
+--- a/msm8974/mm-core/src/8610/qc_registry_table.c
++++ b/msm8974/mm-core/src/8610/qc_registry_table.c
+@@ -404,19 +404,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/8610/qc_registry_table_android.c b/msm8974/mm-core/src/8610/qc_registry_table_android.c
+index efdffc4..18acd49 100755
+--- a/msm8974/mm-core/src/8610/qc_registry_table_android.c
++++ b/msm8974/mm-core/src/8610/qc_registry_table_android.c
+@@ -405,19 +405,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/8960/qc_registry_table_android.c b/msm8974/mm-core/src/8960/qc_registry_table_android.c
+index a0f52ff..a72ffbe 100644
+--- a/msm8974/mm-core/src/8960/qc_registry_table_android.c
++++ b/msm8974/mm-core/src/8960/qc_registry_table_android.c
+@@ -425,22 +425,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/8974/qc_registry_table.c b/msm8974/mm-core/src/8974/qc_registry_table.c
+index c5be030..5eea310 100755
+--- a/msm8974/mm-core/src/8974/qc_registry_table.c
++++ b/msm8974/mm-core/src/8974/qc_registry_table.c
+@@ -404,19 +404,6 @@ omx_core_cb_type core[] =
+      "audio_decoder.awbplus"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/8974/qc_registry_table_android.c b/msm8974/mm-core/src/8974/qc_registry_table_android.c
+index edb35d7..1df2550 100755
+--- a/msm8974/mm-core/src/8974/qc_registry_table_android.c
++++ b/msm8974/mm-core/src/8974/qc_registry_table_android.c
+@@ -456,19 +456,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/msm8952/registry_table.c b/msm8974/mm-core/src/msm8952/registry_table.c
+index 1154138..01a2977 100644
+--- a/msm8974/mm-core/src/msm8952/registry_table.c
++++ b/msm8974/mm-core/src/msm8952/registry_table.c
+@@ -495,19 +495,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/msm8952/registry_table_android.c b/msm8974/mm-core/src/msm8952/registry_table_android.c
+index 4f882e5..0848552 100644
+--- a/msm8974/mm-core/src/msm8952/registry_table_android.c
++++ b/msm8974/mm-core/src/msm8952/registry_table_android.c
+@@ -535,19 +535,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/msm8992/registry_table.c b/msm8974/mm-core/src/msm8992/registry_table.c
+index b4d4866..3613a98 100644
+--- a/msm8974/mm-core/src/msm8992/registry_table.c
++++ b/msm8974/mm-core/src/msm8992/registry_table.c
+@@ -456,22 +456,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/msm8992/registry_table_android.c b/msm8974/mm-core/src/msm8992/registry_table_android.c
+index 200374e..20ee48b 100644
+--- a/msm8974/mm-core/src/msm8992/registry_table_android.c
++++ b/msm8974/mm-core/src/msm8992/registry_table_android.c
+@@ -568,22 +568,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/msm8994/registry_table.c b/msm8974/mm-core/src/msm8994/registry_table.c
+index d6820a8..ceb2635 100644
+--- a/msm8974/mm-core/src/msm8994/registry_table.c
++++ b/msm8974/mm-core/src/msm8994/registry_table.c
+@@ -440,22 +440,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/msm8994/registry_table_android.c b/msm8974/mm-core/src/msm8994/registry_table_android.c
+index 449e4c9..dc2b257 100644
+--- a/msm8974/mm-core/src/msm8994/registry_table_android.c
++++ b/msm8974/mm-core/src/msm8994/registry_table_android.c
+@@ -584,22 +584,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8974/mm-core/src/plutonium/registry_table.c b/msm8974/mm-core/src/plutonium/registry_table.c
+index d6820a8..ceb2635 100644
+--- a/msm8974/mm-core/src/plutonium/registry_table.c
++++ b/msm8974/mm-core/src/plutonium/registry_table.c
+@@ -440,22 +440,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8974/mm-core/src/plutonium/registry_table_android.c b/msm8974/mm-core/src/plutonium/registry_table_android.c
+index 121ffcf..ea5c112 100644
+--- a/msm8974/mm-core/src/plutonium/registry_table_android.c
++++ b/msm8974/mm-core/src/plutonium/registry_table_android.c
+@@ -504,22 +504,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL,
+-      NULL,
+-      NULL,
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8996/mm-core/src/8952/registry_table.c b/msm8996/mm-core/src/8952/registry_table.c
+index 1154138..01a2977 100644
+--- a/msm8996/mm-core/src/8952/registry_table.c
++++ b/msm8996/mm-core/src/8952/registry_table.c
+@@ -495,19 +495,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8996/mm-core/src/8952/registry_table_android.c b/msm8996/mm-core/src/8952/registry_table_android.c
+index 4f882e5..0848552 100644
+--- a/msm8996/mm-core/src/8952/registry_table_android.c
++++ b/msm8996/mm-core/src/8952/registry_table_android.c
+@@ -535,19 +535,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+diff --git a/msm8996/mm-core/src/titanium/registry_table.c b/msm8996/mm-core/src/titanium/registry_table.c
+index d3074f3..c57a033 100644
+--- a/msm8996/mm-core/src/titanium/registry_table.c
++++ b/msm8996/mm-core/src/titanium/registry_table.c
+@@ -508,19 +508,6 @@ omx_core_cb_type core[] =
+       "audio_encoder.amrnb"
+     }
+   },
+- {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+   {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+diff --git a/msm8996/mm-core/src/titanium/registry_table_android.c b/msm8996/mm-core/src/titanium/registry_table_android.c
+index 7984d37..155ad90 100644
+--- a/msm8996/mm-core/src/titanium/registry_table_android.c
++++ b/msm8996/mm-core/src/titanium/registry_table_android.c
+@@ -548,19 +548,6 @@ omx_core_cb_type core[] =
+     }
+   },
+  {
+-    "OMX.qcom.audio.decoder.aac",
+-    NULL,   // Create instance function
+-    // Unique instance handle
+-    {
+-      NULL
+-    },
+-    NULL,   // Shared object library handle
+-    "libOmxAacDec.so",
+-    {
+-      "audio_decoder.aac"
+-    }
+-  },
+- {
+     "OMX.qcom.audio.decoder.multiaac",
+     NULL,   // Create instance function
+     // Unique instance handle
+-- 
+2.7.4
+

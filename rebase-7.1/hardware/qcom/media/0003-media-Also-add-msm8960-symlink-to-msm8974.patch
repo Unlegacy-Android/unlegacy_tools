@@ -1,0 +1,22 @@
+From 59874991602319d6a6da88f7b08516bfae636dda Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?D=2E=20Andrei=20M=C4=83ce=C8=99?= <dmaces@nd.edu>
+Date: Mon, 12 Sep 2016 00:25:37 -0400
+Subject: [PATCH 03/10] media: Also add msm8960 symlink to msm8974
+
+Change-Id: I2457732aaf0cfce708b10e5acb06ebbaf8cfd151
+---
+ msm8960 | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 120000 msm8960
+
+diff --git a/msm8960 b/msm8960
+new file mode 120000
+index 0000000..b1f709d
+--- /dev/null
++++ b/msm8960
+@@ -0,0 +1 @@
++msm8974
+\ No newline at end of file
+-- 
+2.7.4
+

@@ -1,0 +1,32 @@
+From 227bf86c55f823f4582e86b87bc803bad54d9f28 Mon Sep 17 00:00:00 2001
+From: Deva Ramasubramanian <dramasub@codeaurora.org>
+Date: Tue, 23 Jul 2013 18:52:24 -0700
+Subject: [PATCH 07/10] mm-video: vidc: Remove hardcoding of BufCountActual
+
+When metabuffer mode is set, we're harcoding the nBufCountActual to 4.
+In most cases we get away with it, except in cases where nBufCountMin
+happens to be higher.  This triggers quite a few sanity-check conditions
+in the component and driver fail.  Hence to avoid this situation, just
+reset nBufCountActual to nBufCountMin.
+
+Change-Id: I4d296574667640bb678bbc4c5cf8b84922ffb6c0
+---
+ msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
+index 8fb8f6e..8dd637a 100644
+--- a/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
++++ b/msm8974/mm-video-legacy/vidc/venc/src/omx_video_encoder.cpp
+@@ -1007,7 +1007,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
+           }
+           meta_mode_enable = pParam->bStoreMetaData;
+           if(meta_mode_enable) {
+-            m_sInPortDef.nBufferCountActual = 4;
++            m_sInPortDef.nBufferCountActual = m_sInPortDef.nBufferCountMin;
+             if(handle->venc_set_param(&m_sInPortDef,OMX_IndexParamPortDefinition) != true)
+             {
+               DEBUG_PRINT_ERROR("\nERROR: venc_set_param input failed");
+-- 
+2.7.4
+

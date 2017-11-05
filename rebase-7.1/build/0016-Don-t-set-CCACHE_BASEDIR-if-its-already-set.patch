@@ -1,0 +1,30 @@
+From e494f1d0a17905dceaa4aba50c2de9e3107e9c38 Mon Sep 17 00:00:00 2001
+From: Mike Grissom <mikeyman77@gmail.com>
+Date: Mon, 26 Aug 2013 16:09:51 -0700
+Subject: [PATCH 16/20] Don't set CCACHE_BASEDIR if its already set
+
+ * enable use of shared ccache
+
+Change-Id: Ic708a5d5169291d674b167aa2c87bf2c8adaafae
+---
+ core/ccache.mk | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/core/ccache.mk b/core/ccache.mk
+index da2c1ae..7b10373 100644
+--- a/core/ccache.mk
++++ b/core/ccache.mk
+@@ -30,7 +30,9 @@ ifneq ($(filter-out false,$(USE_CCACHE)),)
+   # We don't really use system headers much so the rootdir is
+   # fine; ensures these paths are relative for all Android trees
+   # on a workstation.
+-  export CCACHE_BASEDIR := $(ANDROID_BUILD_TOP)
++  ifeq ($(CCACHE_BASEDIR),)
++    export CCACHE_BASEDIR := $(ANDROID_BUILD_TOP)
++  endif
+ 
+   # Workaround for ccache with clang.
+   # See http://petereisentraut.blogspot.com/2011/09/ccache-and-clang-part-2.html
+-- 
+2.7.4
+

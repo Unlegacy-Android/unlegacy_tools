@@ -1,0 +1,115 @@
+From daa48f53dde32851a2cc366eb73d8bc390745ad6 Mon Sep 17 00:00:00 2001
+From: Steve Kondik <shade@chemlab.org>
+Date: Fri, 6 Nov 2015 14:14:25 +0100
+Subject: [PATCH 04/20] Allow override of device asserts, including
+ multi-device support.
+
+Set in board file with TARGET_OTA_ASSERT_DEVICE.
+
+Change-Id: I3d06bdc0e3e26bde0c0e646accd050364f9713b9
+---
+ core/Makefile                               |  7 +++++++
+ tools/releasetools/edify_generator.py       | 10 ++++++----
+ tools/releasetools/ota_from_target_files.py | 12 +++++++++++-
+ 3 files changed, 24 insertions(+), 5 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 2f962aa..2da3dfe 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1945,6 +1945,12 @@ INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
+ 
+ $(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
+ 
++ifeq ($(TARGET_OTA_ASSERT_DEVICE),)
++    $(INTERNAL_OTA_PACKAGE_TARGET): override_device := auto
++else
++    $(INTERNAL_OTA_PACKAGE_TARGET): override_device := $(TARGET_OTA_ASSERT_DEVICE)
++endif
++
+ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE)
+ 	@echo "Package OTA: $@"
+ 	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+@@ -1952,6 +1958,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE)
+ 	   --block \
+ 	   -p $(HOST_OUT) \
+ 	   -k $(KEY_CERT_PAIR) \
++	   --override_device=$(override_device) \
+ 	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
+ 	   $(BUILT_TARGET_FILES_PACKAGE) $@
+ 
+diff --git a/tools/releasetools/edify_generator.py b/tools/releasetools/edify_generator.py
+index 2ecc5cb..8136824 100644
+--- a/tools/releasetools/edify_generator.py
++++ b/tools/releasetools/edify_generator.py
+@@ -132,10 +132,12 @@ class EdifyGenerator(object):
+ 
+   def AssertDevice(self, device):
+     """Assert that the device identifier is the given string."""
+-    cmd = ('getprop("ro.product.device") == "%s" || '
+-           'abort("E%d: This package is for \\"%s\\" devices; '
+-           'this is a \\"" + getprop("ro.product.device") + "\\".");') % (
+-               device, common.ErrorCode.DEVICE_MISMATCH, device)
++    cmd = ('assert(' +
++           ' || '.join(['getprop("ro.product.device") == "%s" || getprop("ro.build.product") == "%s"'
++                         % (i, i) for i in device.split(",")]) +
++           ' || abort("This package is for device: %s; ' +
++           'this device is " + getprop("ro.product.device") + ".");' +
++           ');') % device
+     self.script.append(cmd)
+ 
+   def AssertSomeBootloader(self, *bootloaders):
+diff --git a/tools/releasetools/ota_from_target_files.py b/tools/releasetools/ota_from_target_files.py
+index d409d94..6f3d74b 100755
+--- a/tools/releasetools/ota_from_target_files.py
++++ b/tools/releasetools/ota_from_target_files.py
+@@ -114,6 +114,9 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
+       builds for an incremental package. This option is only meaningful when
+       -i is specified.
+ 
++  --override_device <device>
++      Override device-specific asserts. Can be a comma-separated list.
++
+   --payload_signer <signer>
+       Specify the signer when signing the payload and metadata for A/B OTAs.
+       By default (i.e. without this flag), it calls 'openssl pkeyutl' to sign
+@@ -172,6 +175,7 @@ OPTIONS.cache_size = None
+ OPTIONS.stash_threshold = 0.8
+ OPTIONS.gen_verify = False
+ OPTIONS.log_diff = None
++OPTIONS.override_device = 'auto'
+ OPTIONS.payload_signer = None
+ OPTIONS.payload_signer_args = []
+ 
+@@ -454,7 +458,10 @@ def SignOutput(temp_zip_name, output_zip_name):
+ def AppendAssertions(script, info_dict, oem_dict=None):
+   oem_props = info_dict.get("oem_fingerprint_properties")
+   if oem_props is None or len(oem_props) == 0:
+-    device = GetBuildProp("ro.product.device", info_dict)
++    if OPTIONS.override_device == "auto":
++      device = GetBuildProp("ro.product.device", info_dict)
++    else:
++      device = OPTIONS.override_device
+     script.AssertDevice(device)
+   else:
+     if oem_dict is None:
+@@ -2010,6 +2017,8 @@ def main(argv):
+       OPTIONS.gen_verify = True
+     elif o == "--log_diff":
+       OPTIONS.log_diff = a
++    elif o == "--override_device":
++      OPTIONS.override_device = a
+     elif o == "--payload_signer":
+       OPTIONS.payload_signer = a
+     elif o == "--payload_signer_args":
+@@ -2043,6 +2052,7 @@ def main(argv):
+                                  "stash_threshold=",
+                                  "gen_verify",
+                                  "log_diff=",
++                                 "override_device=",
+                                  "payload_signer=",
+                                  "payload_signer_args=",
+                              ], extra_option_handler=option_handler)
+-- 
+2.7.4
+

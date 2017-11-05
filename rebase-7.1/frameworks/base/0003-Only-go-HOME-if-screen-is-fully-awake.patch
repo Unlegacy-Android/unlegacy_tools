@@ -1,0 +1,31 @@
+From 354a3566928e88b12044598383a0f11c53731638 Mon Sep 17 00:00:00 2001
+From: willl03 <wgangers@gmail.com>
+Date: Mon, 8 Dec 2014 11:13:28 -0500
+Subject: [PATCH 3/6] Only go HOME if screen is fully awake
+
+Avoid going home when hardware home button is used to wake the device on an insecure keyguard
+
+Change-Id: I5d5d8c4fff76967c29e70251f7b165205005ba11
+---
+ services/core/java/com/android/server/policy/PhoneWindowManager.java | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 6dd763f..11585b4 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -3890,8 +3890,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                 awakenDreams();
+             }
+             hideRecentApps(false, true);
+-        } else {
+-            // Otherwise, just launch Home
++        } else if (mScreenOnFully) {
++            // check if screen is fully on before going home
++            // to avoid hardware home button wake going home
+             sendCloseSystemWindows(SYSTEM_DIALOG_REASON_HOME_KEY);
+             startDockOrHome(true /*fromHomeKey*/, awakenFromDreams);
+         }
+-- 
+2.7.4
+

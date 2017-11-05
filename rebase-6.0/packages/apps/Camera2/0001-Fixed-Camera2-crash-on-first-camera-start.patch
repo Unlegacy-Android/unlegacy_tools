@@ -1,0 +1,62 @@
+From c05c3ec9aedbd9a87acac5852f0d37f600b4bde6 Mon Sep 17 00:00:00 2001
+From: Luden <luden@ghostmail.com>
+Date: Fri, 19 Feb 2016 23:19:13 +0100
+Subject: [PATCH] Fixed Camera2 crash on first camera start.
+
+When camera enters video preview mode, it uses current window
+size to select the best matching video preview size to request
+from the camera HAL.
+
+However, if video preview mode is the initial mode in which the
+camera starts, there's a race condition between preview size
+selection and camera app layout completion. If preview size
+selection code is run first, it will get zero window size and
+subsequently will crash.
+
+It's not clear what's really the "best" fix in this situation
+(= waiting for layout to complete would introduce extra latency
+in the camera startup process), so current work-around just checks
+whether window size is already defined and if not - uses display
+size instead. This makes sense because normally camera window
+is running full-screen anyway, so window size will match display
+size.
+
+Change-Id: Ie8555025902ba8ae6f719d45371145126290bb7c
+---
+ src/com/android/camera/VideoUI.java | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/camera/VideoUI.java b/src/com/android/camera/VideoUI.java
+index 9d00969..458bd30 100644
+--- a/src/com/android/camera/VideoUI.java
++++ b/src/com/android/camera/VideoUI.java
+@@ -19,6 +19,7 @@ package com.android.camera;
+ import android.graphics.Bitmap;
+ import android.graphics.Point;
+ import android.graphics.SurfaceTexture;
++import android.util.DisplayMetrics;
+ import android.view.GestureDetector;
+ import android.view.MotionEvent;
+ import android.view.View;
+@@ -246,7 +247,17 @@ public class VideoUI implements PreviewStatusListener {
+      * @return The size of the available preview area.
+      */
+     public Point getPreviewScreenSize() {
+-        return new Point(mRootView.getMeasuredWidth(), mRootView.getMeasuredHeight());
++        if (mRootView.getMeasuredWidth() > 0 && mRootView.getMeasuredHeight() > 0) {
++            return new Point(mRootView.getMeasuredWidth(), mRootView.getMeasuredHeight());
++	} else {
++	    // Measured width and height are not yet available - use screen size
++	    // as a proxy, should be fine given camera typically is full screen anyhow.
++	    DisplayMetrics metrics = new DisplayMetrics();
++	    mActivity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
++	    Log.i(TAG, "Measured width and height are not yet available, reverting " +
++	            "to display size: " + metrics.widthPixels + ", " + metrics.heightPixels);
++	    return new Point(metrics.widthPixels, metrics.heightPixels);
++	}
+     }
+ 
+     /**
+-- 
+2.7.4
+

@@ -1,0 +1,94 @@
+From b72a6583b51880f6746ea1e93b7fc402bc801e55 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Fri, 11 Nov 2016 19:10:42 +0100
+Subject: [PATCH 7/7] OMXNodeInstance: Legacy HAL1 fixes after android-7.1.0_r7
+
+Change-Id: I53985a966b891b902437f71d4ebccbd68138329e
+
+Original commit: https://github.com/nitrogen-project/android_frameworks_av/commit/4ec00575cec1514c1272f99a0fd3b1041091446d
+
+Change-Id: I807a23a7e92b70f0d9f3d807636ea4649a413924
+---
+ media/libstagefright/omx/Android.mk          |  6 ++++++
+ media/libstagefright/omx/OMXNodeInstance.cpp | 28 ++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/media/libstagefright/omx/Android.mk b/media/libstagefright/omx/Android.mk
+index e4fbd81..8fc788f 100644
+--- a/media/libstagefright/omx/Android.mk
++++ b/media/libstagefright/omx/Android.mk
+@@ -31,6 +31,12 @@ LOCAL_SHARED_LIBRARIES :=               \
+         libstagefright_foundation       \
+         libdl
+ 
++ifneq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
++ifeq ($(TARGET_HAS_LEGACY_CAMERA_HAL1),true)
++LOCAL_CFLAGS += -DCAMCORDER_GRALLOC_SOURCE
++endif
++endif
++
+ LOCAL_MODULE:= libstagefright_omx
+ LOCAL_CFLAGS += -Werror -Wall
+ LOCAL_CLANG := true
+diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
+index e7aaead..8752b4e 100644
+--- a/media/libstagefright/omx/OMXNodeInstance.cpp
++++ b/media/libstagefright/omx/OMXNodeInstance.cpp
+@@ -801,7 +801,11 @@ status_t OMXNodeInstance::useBuffer(
+     // metadata buffers are not connected cross process
+     // use a backup buffer instead of the actual buffer
+     BufferMeta *buffer_meta;
++#ifdef CAMCORDER_GRALLOC_SOURCE
++    bool useBackup = false;
++#else
+     bool useBackup = mMetadataType[portIndex] != kMetadataBufferTypeInvalid;
++#endif
+     OMX_U8 *data = static_cast<OMX_U8 *>(params->pointer());
+     // allocate backup buffer
+     if (useBackup) {
+@@ -1297,7 +1301,11 @@ status_t OMXNodeInstance::allocateBufferWithBackup(
+     }
+ 
+     // metadata buffers are not connected cross process; only copy if not meta
++#ifdef CAMCORDER_GRALLOC_SOURCE
++    bool copy = true;
++#else
+     bool copy = mMetadataType[portIndex] == kMetadataBufferTypeInvalid;
++#endif
+ 
+     BufferMeta *buffer_meta = new BufferMeta(
+             params, portIndex,
+@@ -1415,10 +1423,30 @@ status_t OMXNodeInstance::emptyBuffer(
+     BufferMeta *buffer_meta =
+         static_cast<BufferMeta *>(header->pAppPrivate);
+ 
++#ifndef CAMCORDER_GRALLOC_SOURCE
+     // set up proper filled length if component is configured for gralloc metadata mode
+     // ignore rangeOffset in this case (as client may be assuming ANW meta buffers).
+     if (mMetadataType[kPortIndexInput] == kMetadataBufferTypeGrallocSource) {
+         header->nFilledLen = rangeLength ? sizeof(VideoGrallocMetadata) : 0;
++#else
++    sp<ABuffer> backup = buffer_meta->getBuffer(header, true /* backup */, false /* limit */);
++    sp<ABuffer> codec = buffer_meta->getBuffer(header, false /* backup */, false /* limit */);
++
++    // convert incoming ANW meta buffers if component is configured for gralloc metadata mode
++    // ignore rangeOffset in this case
++    if (mMetadataType[kPortIndexInput] == kMetadataBufferTypeGrallocSource
++            && backup->capacity() >= sizeof(VideoNativeMetadata)
++            && codec->capacity() >= sizeof(VideoGrallocMetadata)
++            && ((VideoNativeMetadata *)backup->base())->eType
++                    == kMetadataBufferTypeANWBuffer) {
++        VideoNativeMetadata &backupMeta = *(VideoNativeMetadata *)backup->base();
++        VideoGrallocMetadata &codecMeta = *(VideoGrallocMetadata *)codec->base();
++        CLOG_BUFFER(emptyBuffer, "converting ANWB %p to handle %p",
++                backupMeta.pBuffer, backupMeta.pBuffer->handle);
++        codecMeta.pHandle = backupMeta.pBuffer != NULL ? backupMeta.pBuffer->handle : NULL;
++        codecMeta.eType = kMetadataBufferTypeGrallocSource;
++        header->nFilledLen = rangeLength ? sizeof(codecMeta) : 0;
++#endif
+         header->nOffset = 0;
+     } else {
+         // rangeLength and rangeOffset must be a subset of the allocated data in the buffer.
+-- 
+2.7.4
+

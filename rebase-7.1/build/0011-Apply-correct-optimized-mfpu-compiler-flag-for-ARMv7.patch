@@ -1,0 +1,108 @@
+From 1a13a4111c79bbe723d79702a4fa408807f02b80 Mon Sep 17 00:00:00 2001
+From: arter97 <qkrwngud825@gmail.com>
+Date: Tue, 9 Sep 2014 11:44:22 +0900
+Subject: [PATCH 11/20] Apply correct, optimized mfpu compiler flag for ARMv7-A
+ Cortex CPUs
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+For those ARMv7-A Cortex CPUs that can handle VFPv4 floating point,
+We can set "-mfpu=neon-vfpv4" instead of generic "-mfpu=neon"
+to gain extra performance improvements.
+
+References :
+ - GCC		: https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
+ - Cortex A15	: http://www.arm.com/products/processors/cortex-a/cortex-a15.php
+ - Cortex A9	: http://www.arm.com/products/processors/cortex-a/cortex-a9.php
+ - Cortex A8	: http://www.arm.com/products/processors/cortex-a/cortex-a8.php
+ - Cortex A7	: http://www.arm.com/products/processors/cortex-a/cortex-a7.php
+ - Cortex A5	: http://www.arm.com/products/processors/cortex-a/cortex-a5.php
+
+Currently prebuilt clang doesn't support neon-vfpv4 flag so fall back to neon
+Also added support for cortex-a5 arch
+
+Change-Id: I91893789ed8edabf3767e1782e494b81158332bb
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: Maxime Poulain <maxime.poulain@student.uclouvain.be>
+Adapted from CM14/Lineage, keeping TARGET_FPU_VARIANT
+Signed-off-by: D. Andrei Măceș <dmaces@nd.edu>
+---
+ core/combo/arch/arm/armv7-a-neon.mk | 25 ++++++++++++++-----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)
+
+diff --git a/core/combo/arch/arm/armv7-a-neon.mk b/core/combo/arch/arm/armv7-a-neon.mk
+index b36c717..b0e1e25 100644
+--- a/core/combo/arch/arm/armv7-a-neon.mk
++++ b/core/combo/arch/arm/armv7-a-neon.mk
+@@ -8,35 +8,40 @@ ARCH_ARM_HAVE_NEON              := true
+ 
+ local_arch_has_lpae := false
+ 
+-ifneq (,$(filter cortex-a15 krait denver,$(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)))
++ifneq (,$(filter cortex-a15 denver krait,$(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)))
+ 	# TODO: krait is not a cortex-a15, we set the variant to cortex-a15 so that
+ 	#       hardware divide operations are generated. This should be removed and a
+ 	#       krait CPU variant added to GCC. For clang we specify -mcpu for krait in
+ 	#       core/clang/arm.mk.
+-	arch_variant_cflags := -mcpu=cortex-a15
++	arch_variant_cflags := -mcpu=cortex-a15 -mfpu=neon-vfpv4
+ 
+ 	local_arch_has_lpae := true
+ 	arch_variant_ldflags := \
+ 		-Wl,--no-fix-cortex-a8
+ else
+ ifeq ($(strip $(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)),cortex-a9)
+-	arch_variant_cflags := -mcpu=cortex-a9
++	arch_variant_cflags := -mcpu=cortex-a9 -mfpu=neon
+ 	arch_variant_ldflags := \
+ 		-Wl,--no-fix-cortex-a8
+ else
+-ifeq ($(strip $(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)),cortex-a8)
+-	arch_variant_cflags := -mcpu=cortex-a8
++ifneq (,$(filter cortex-a8 scorpion,$(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)))
++	arch_variant_cflags := -mcpu=cortex-a8 -mfpu=neon
+ 	arch_variant_ldflags := \
+ 		-Wl,--fix-cortex-a8
+ else
+ ifneq (,$(filter cortex-a7 cortex-a53 cortex-a53.a57,$(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)))
+-	arch_variant_cflags := -mcpu=cortex-a7
++	arch_variant_cflags := -mcpu=cortex-a7 -mfpu=neon-vfpv4
+ 
+ 	local_arch_has_lpae := true
+ 	arch_variant_ldflags := \
+ 		-Wl,--no-fix-cortex-a8
+ else
+-	arch_variant_cflags := -march=armv7-a
++ifeq ($(strip $(TARGET_$(combo_2nd_arch_prefix)CPU_VARIANT)),cortex-a5)
++	arch_variant_cflags := -mcpu=cortex-a7 -mfpu=neon-vfpv4
++	arch_variant_ldflags := \
++		-Wl,--no-fix-cortex-a8
++else
++	arch_variant_cflags := -march=armv7-a -mfpu=neon
+ 	# Generic ARM might be a Cortex A8 -- better safe than sorry
+ 	arch_variant_ldflags := \
+ 		-Wl,--fix-cortex-a8
+@@ -44,6 +49,7 @@ endif
+ endif
+ endif
+ endif
++endif
+ 
+ ifeq (true,$(local_arch_has_lpae))
+ 	# Fake an ARM compiler flag as these processors support LPAE which GCC/clang
+@@ -58,10 +64,7 @@ local_arch_has_lpae :=
+ arch_variant_cflags += \
+ 	-mfloat-abi=softfp
+ 
+-ifeq ($(strip $(TARGET_$(combo_2nd_arch_prefix)FPU_VARIANT)),)
+-arch_variant_cflags += \
+-	-mfpu=neon
+-else
++ifneq ($(strip $(TARGET_$(combo_2nd_arch_prefix)FPU_VARIANT)),)
+ arch_variant_cflags += \
+ 	-mfpu=$(TARGET_$(combo_2nd_arch_prefix)FPU_VARIANT)
+ endif
+-- 
+2.7.4
+

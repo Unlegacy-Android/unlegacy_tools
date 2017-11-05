@@ -1,0 +1,33 @@
+From e2b6bedaf6d9f0cd508ffa57772a99c0ef263665 Mon Sep 17 00:00:00 2001
+From: Andreas Blaesius <skate4life@gmx.de>
+Date: Fri, 25 Mar 2016 13:46:29 +0100
+Subject: [PATCH 07/20] build: add ASCII Logo to edify script
+
+Change-Id: Id65019d56dc44542f0b042708b17861b20930c0e
+---
+ tools/releasetools/ota_from_target_files.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/tools/releasetools/ota_from_target_files.py b/tools/releasetools/ota_from_target_files.py
+index 6f3d74b..960ac4a 100755
+--- a/tools/releasetools/ota_from_target_files.py
++++ b/tools/releasetools/ota_from_target_files.py
+@@ -691,6 +691,15 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
+ 
+   system_items = ItemSet("system", "META/filesystem_config.txt")
+   script.ShowProgress(system_progress, 0)
++  script.Print(" ##################################### ")
++  script.Print("")
++  script.Print("        _      ___    ___   ___        ")
++  script.Print("       /_\    / _ \  / __| | _ \       ")
++  script.Print("      / _ \  | (_) | \__ \ |  _/       ")
++  script.Print("     /_/ \_\  \___/  |___/ |_|         ")
++  script.Print("")
++  script.Print("      www.unlegacy-android.org         ")
++  script.Print(" ##################################### ")
+ 
+   if block_based:
+     # Full OTA is done as an "incremental" against an empty source
+-- 
+2.7.4
+

@@ -1,0 +1,46 @@
+From 5094af766590585a6db2b20ed0e6bfa34807dc1b Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Fri, 31 Mar 2017 15:23:11 +0900
+Subject: [PATCH 13/20] core: use 0 compression when creating the target_files
+ package
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The zip file under $OUT/obj/PACKAGING/target_files_intermediate
+is used for final package creation,
+and it's being unzipped multiple times by releasetools.
+
+(Not to mention that it also takes an awful lot of time
+just to zip it initially.)
+
+Using 0 compression on it reduces the build time by several minutes.
+
+The final zip package is untouched by this change(remains compressed).
+
+Change-Id: Ic38b470f97f1e0ebb80da9d4f7750e4ccf53e05c
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: Alex Naidis <alex.naidis@linux.com>
+Signed-off-by: André Pinela <sheffzor@gmail.com>
+---
+ core/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 8e9e5a5..7554969 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1941,8 +1941,8 @@ endif
+ 	@# Zip everything up, preserving symlinks and placing META/ files first to
+ 	@# help early validation of the .zip file while uploading it.
+ 	$(hide) (cd $(zip_root) && \
+-	        zip -qryX ../$(notdir $@) ./META && \
+-	        zip -qryXu ../$(notdir $@) .)
++	        zip -0qryX ../$(notdir $@) ./META && \
++	        zip -0qryXu ../$(notdir $@) .)
+ 	@# Run fs_config on all the system, vendor, boot ramdisk,
+ 	@# and recovery ramdisk files in the zip, and save the output
+ 	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="SYSTEM/" } /^SYSTEM\// {print "system/" $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config -C -D $(TARGET_OUT) -S $(SELINUX_FC) > $(zip_root)/META/filesystem_config.txt
+-- 
+2.7.4
+

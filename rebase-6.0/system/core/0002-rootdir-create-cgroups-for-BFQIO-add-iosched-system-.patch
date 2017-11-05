@@ -1,0 +1,95 @@
+From da356105b90496e0a5fd9a2c55495770141a0bc6 Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Sat, 5 Nov 2016 12:32:23 +0100
+Subject: [PATCH 2/4] rootdir: create cgroups for BFQIO, add iosched system
+ property
+
+Based on:
+https://github.com/CyanogenMod/android_vendor_cm/blob/cm-13.0/prebuilt/common/etc/init.local.rc
+
+Change-Id: I71badf9349497a11d8f1c12671ff61862a4cfc0d
+---
+ rootdir/Android.mk |  2 ++
+ rootdir/init.io.rc | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ rootdir/init.rc    |  1 +
+ 3 files changed, 47 insertions(+)
+ create mode 100644 rootdir/init.io.rc
+
+diff --git a/rootdir/Android.mk b/rootdir/Android.mk
+index 7ab76b8..36484ce 100644
+--- a/rootdir/Android.mk
++++ b/rootdir/Android.mk
+@@ -11,6 +11,8 @@ LOCAL_SRC_FILES := $(LOCAL_MODULE)
+ LOCAL_MODULE_CLASS := ETC
+ LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
+ 
++LOCAL_POST_INSTALL_CMD := $(hide) cp $(LOCAL_PATH)/init.io.rc $(TARGET_ROOT_OUT)
++
+ include $(BUILD_PREBUILT)
+ endif
+ #######################################
+diff --git a/rootdir/init.io.rc b/rootdir/init.io.rc
+new file mode 100644
+index 0000000..4830915
+--- /dev/null
++++ b/rootdir/init.io.rc
+@@ -0,0 +1,44 @@
++on init
++    # Set up the BFQIO hierarchy
++    chmod 0755 /sys/fs/cgroup
++    mkdir /sys/fs/cgroup/bfqio 0755 root system
++    mount cgroup none /sys/fs/cgroup/bfqio bfqio
++    chown root system /sys/fs/cgroup/bfqio/tasks
++    chmod 0664 /sys/fs/cgroup/bfqio/tasks
++    chmod 0220 /sys/fs/cgroup/bfqio/cgroup.event_control
++
++    # Soft realtime class for display service
++    mkdir /sys/fs/cgroup/bfqio/rt-display 0755 root system
++    write /sys/fs/cgroup/bfqio/rt-display/bfqio.ioprio_class 1
++    write /sys/fs/cgroup/bfqio/rt-display/bfqio.ioprio 7
++    chown system system /sys/fs/cgroup/bfqio/rt-display/tasks
++    chmod 0664 /sys/fs/cgroup/bfqio/rt-display/tasks
++    chmod 0220 /sys/fs/cgroup/bfqio/rt-display/cgroup.event_control
++
++# Configure IO scheduler
++on property:sys.io.scheduler=*
++    write /sys/block/mmcblk0/queue/scheduler ${sys.io.scheduler}
++    write /sys/block/mmcblk1/queue/scheduler ${sys.io.scheduler}
++    write /sys/block/sda/queue/scheduler ${sys.io.scheduler}
++    write /sys/block/sde/queue/scheduler ${sys.io.scheduler}
++    write /sys/block/dm-0/queue/scheduler ${sys.io.scheduler}
++
++on property:persist.sys.io.scheduler=*
++    setprop sys.io.scheduler ${persist.sys.io.scheduler}
++
++# Set slice_idle to 0 for CFQ
++on property:sys.io.scheduler=cfq
++    write /sys/block/mmcblk0/queue/iosched/slice_idle 0
++    write /sys/block/mmcblk1/queue/iosched/slice_idle 0
++    write /sys/block/sda/queue/iosched/slice_idle 0
++    write /sys/block/sde/queue/iosched/slice_idle 0
++    write /sys/block/dm-0/queue/iosched/slice_idle 0
++
++# Set slice_idle to 0 for BFQ
++on property:sys.io.scheduler=bfq
++    write /sys/block/mmcblk0/queue/iosched/slice_idle 0
++    write /sys/block/mmcblk1/queue/iosched/slice_idle 0
++    write /sys/block/sda/queue/iosched/slice_idle 0
++    write /sys/block/sde/queue/iosched/slice_idle 0
++    write /sys/block/dm-0/queue/iosched/slice_idle 0
++
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 900e356..a351e21 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -10,6 +10,7 @@ import /init.${ro.hardware}.rc
+ import /init.usb.configfs.rc
+ import /init.${ro.zygote}.rc
+ import /init.trace.rc
++import /init.io.rc
+ 
+ on early-init
+     # Set init and its forked children's oom_adj.
+-- 
+2.7.4
+

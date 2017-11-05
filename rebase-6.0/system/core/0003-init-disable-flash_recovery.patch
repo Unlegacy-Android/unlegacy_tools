@@ -1,0 +1,25 @@
+From 2a8c4f89a3de54647610f1a5b071942e3cdfd67b Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Sun, 11 Oct 2015 23:55:07 +0200
+Subject: [PATCH 3/4] init: disable flash_recovery
+
+Change-Id: Ieb07400c6e50395239aaaf232f02dce974c17b31
+---
+ rootdir/init.rc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index a351e21..fc2aec6 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -697,6 +697,7 @@ service installd /system/bin/installd
+ service flash_recovery /system/bin/install-recovery.sh
+     class main
+     oneshot
++    disabled
+ 
+ service racoon /system/bin/racoon
+     class main
+-- 
+2.7.4
+

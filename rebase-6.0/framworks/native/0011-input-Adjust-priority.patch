@@ -1,0 +1,118 @@
+From 3c94fe18d4fc4002627a6c6c96789d984e700000 Mon Sep 17 00:00:00 2001
+From: Steve Kondik <steve@cyngn.com>
+Date: Sun, 20 Sep 2015 04:20:21 -0700
+Subject: [PATCH 11/11] input: Adjust priority
+
+ * Bring into the desired group to get the best result.
+
+Change-Id: I3bd031074cd7006994736b4c22d0294b6012f662
+---
+ services/inputflinger/InputManager.cpp     | 10 ++++++++--
+ services/surfaceflinger/DispSync.cpp       |  2 ++
+ services/surfaceflinger/EventThread.cpp    |  2 ++
+ services/surfaceflinger/SurfaceFlinger.cpp |  2 ++
+ 4 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/services/inputflinger/InputManager.cpp b/services/inputflinger/InputManager.cpp
+index 6a6547b..4f28840 100644
+--- a/services/inputflinger/InputManager.cpp
++++ b/services/inputflinger/InputManager.cpp
+@@ -21,6 +21,7 @@
+ #include "InputManager.h"
+ 
+ #include <cutils/log.h>
++#include <cutils/iosched_policy.h>
+ 
+ namespace android {
+ 
+@@ -51,13 +52,15 @@ void InputManager::initialize() {
+ }
+ 
+ status_t InputManager::start() {
+-    status_t result = mDispatcherThread->run("InputDispatcher", PRIORITY_URGENT_DISPLAY);
++    status_t result = mDispatcherThread->run("InputDispatcher",
++            PRIORITY_URGENT_DISPLAY + PRIORITY_MORE_FAVORABLE);
+     if (result) {
+         ALOGE("Could not start InputDispatcher thread due to error %d.", result);
+         return result;
+     }
+ 
+-    result = mReaderThread->run("InputReader", PRIORITY_URGENT_DISPLAY);
++    result = mReaderThread->run("InputReader",
++            PRIORITY_URGENT_DISPLAY + PRIORITY_MORE_FAVORABLE);
+     if (result) {
+         ALOGE("Could not start InputReader thread due to error %d.", result);
+ 
+@@ -65,6 +68,9 @@ status_t InputManager::start() {
+         return result;
+     }
+ 
++    android_set_rt_ioprio(mDispatcherThread->getTid(), 1);
++    android_set_rt_ioprio(mReaderThread->getTid(), 1);
++
+     return OK;
+ }
+ 
+diff --git a/services/surfaceflinger/DispSync.cpp b/services/surfaceflinger/DispSync.cpp
+index 3738a55..73b3897 100644
+--- a/services/surfaceflinger/DispSync.cpp
++++ b/services/surfaceflinger/DispSync.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include <math.h>
+ 
++#include <cutils/iosched_policy.h>
+ #include <cutils/log.h>
+ 
+ #include <ui/Fence.h>
+@@ -292,6 +293,7 @@ DispSync::DispSync() :
+         mThread(new DispSyncThread()) {
+ 
+     mThread->run("DispSync", PRIORITY_URGENT_DISPLAY + PRIORITY_MORE_FAVORABLE);
++    android_set_rt_ioprio(mThread->getTid(), 1);
+ 
+     reset();
+     beginResync();
+diff --git a/services/surfaceflinger/EventThread.cpp b/services/surfaceflinger/EventThread.cpp
+index f760200..973a8bc 100644
+--- a/services/surfaceflinger/EventThread.cpp
++++ b/services/surfaceflinger/EventThread.cpp
+@@ -20,6 +20,7 @@
+ #include <sys/types.h>
+ 
+ #include <cutils/compiler.h>
++#include <cutils/iosched_policy.h>
+ 
+ #include <gui/BitTube.h>
+ #include <gui/IDisplayEventConnection.h>
+@@ -91,6 +92,7 @@ void EventThread::sendVsyncHintOnLocked() {
+ 
+ void EventThread::onFirstRef() {
+     run("EventThread", PRIORITY_URGENT_DISPLAY + PRIORITY_MORE_FAVORABLE);
++    android_set_rt_ioprio(getTid(), 1);
+ }
+ 
+ sp<EventThread::Connection> EventThread::createEventConnection() const {
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index e659411..b19d58a 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -27,6 +27,7 @@
+ #include <EGL/egl.h>
+ 
+ #include <cutils/log.h>
++#include <cutils/iosched_policy.h>
+ #include <cutils/properties.h>
+ 
+ #include <binder/IPCThreadState.h>
+@@ -507,6 +508,7 @@ void SurfaceFlinger::init() {
+ 
+     mEventControlThread = new EventControlThread(this);
+     mEventControlThread->run("EventControl", PRIORITY_URGENT_DISPLAY);
++    android_set_rt_ioprio(mEventControlThread->getTid(), 1);
+ 
+     // set a fake vsync period if there is no HWComposer
+     if (mHwc->initCheck() != NO_ERROR) {
+-- 
+2.7.4
+

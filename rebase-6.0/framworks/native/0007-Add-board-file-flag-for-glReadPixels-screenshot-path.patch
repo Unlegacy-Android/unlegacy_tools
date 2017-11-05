@@ -1,0 +1,48 @@
+From d602344c13e661fb2529892ce4756983f73060fc Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Thu, 8 Sep 2016 14:44:15 +0200
+Subject: [PATCH 07/11] Add board file flag for glReadPixels screenshot path
+
+Backported from N:
+https://github.com/OMAP4-AOSP/android_frameworks_native/commit/7cc6220f75ddb4d5cfede30ac1d945a136e4634e
+
+This kills the need for a global cflag. Device must set:
+TARGET_FORCE_SCREENSHOT_CPU_PATH := true
+
+Change-Id: I72976313cd821d7aeff0b0fd0107a9f7c80b5c7e
+---
+ libs/gui/Android.mk                | 3 +++
+ services/surfaceflinger/Android.mk | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/libs/gui/Android.mk b/libs/gui/Android.mk
+index 8a965dd..d6f9c9e 100644
+--- a/libs/gui/Android.mk
++++ b/libs/gui/Android.mk
+@@ -81,6 +81,9 @@ LOCAL_SHARED_LIBRARIES := \
+ 	libutils \
+ 	liblog
+ 
++ifeq ($(TARGET_FORCE_SCREENSHOT_CPU_PATH), true)
++	LOCAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
++endif
+ 
+ LOCAL_MODULE := libgui
+ 
+diff --git a/services/surfaceflinger/Android.mk b/services/surfaceflinger/Android.mk
+index 1eb2361..81b6994 100644
+--- a/services/surfaceflinger/Android.mk
++++ b/services/surfaceflinger/Android.mk
+@@ -40,6 +40,9 @@ LOCAL_SRC_FILES := \
+ LOCAL_CFLAGS := -DLOG_TAG=\"SurfaceFlinger\"
+ LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
+ 
++ifeq ($(TARGET_FORCE_SCREENSHOT_CPU_PATH),true)
++    LOCAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
++endif
+ ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+     LOCAL_CFLAGS += -DHAS_CONTEXT_PRIORITY
+ endif
+-- 
+2.7.4
+

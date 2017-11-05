@@ -1,0 +1,43 @@
+From d2cf54835ce6cba2efd52a855aa8740961db0d2e Mon Sep 17 00:00:00 2001
+From: Zhao Wei Liew <zhaoweiliew@gmail.com>
+Date: Thu, 8 Sep 2016 20:01:29 +0800
+Subject: [PATCH 6/8] cutils: iosched_policy: Access BFQIO cgroup in /dev/bfqio
+
+AOSP doesn't mount cgroups in /sys/fs/cgroup, but in /dev/.
+Follow what AOSP does.
+
+Change-Id: I40d2241e3e5c41612d3a54d22981d3250f8b1ed6
+---
+ libcutils/iosched_policy.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libcutils/iosched_policy.c b/libcutils/iosched_policy.c
+index c1314a1..bb7693f 100644
+--- a/libcutils/iosched_policy.c
++++ b/libcutils/iosched_policy.c
+@@ -57,8 +57,8 @@ int android_get_ioprio(int pid __android_unused, IoSchedClass *clazz, int *iopri
+ }
+ 
+ static void __initialize_rtio(void) {
+-    if (!access("/sys/fs/cgroup/bfqio/tasks", W_OK) ||
+-        !access("/sys/fs/cgroup/bfqio/rt-display/tasks", W_OK)) {
++    if (!access("/dev/bfqio/tasks", W_OK) ||
++        !access("/dev/bfqio/rt-display/tasks", W_OK)) {
+         __rtio_cgroup_supported = 1;
+     } else {
+         __rtio_cgroup_supported = 0;
+@@ -74,9 +74,9 @@ int android_set_rt_ioprio(int tid, int rt) {
+     }
+ 
+     if (rt) {
+-        fd = open("/sys/fs/cgroup/bfqio/rt-display/tasks", O_WRONLY | O_CLOEXEC);
++        fd = open("/dev/bfqio/rt-display/tasks", O_WRONLY | O_CLOEXEC);
+     } else {
+-        fd = open("/sys/fs/cgroup/bfqio/tasks", O_WRONLY | O_CLOEXEC);
++        fd = open("/dev/bfqio/tasks", O_WRONLY | O_CLOEXEC);
+     }
+ 
+     if (fd < 0) {
+-- 
+2.7.4
+

@@ -1,0 +1,72 @@
+From 0f0e1505675967c8d791afe777221c01d00a67cd Mon Sep 17 00:00:00 2001
+From: Gabriele M <moto.falcon.git@gmail.com>
+Date: Thu, 9 Feb 2017 13:59:27 +0100
+Subject: [PATCH 19/20] releasetools: Generate recovery-from-boot.p with bsdiff
+ if necessary
+
+If TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK is true, we want to use bsdiff
+to create recovery-from-boot.p, otherwise there are high chances that
+imgdiff will fail. Currently this is done only when running make, but
+not when we re-create the patch from releasetools, so do it.
+
+Also, since recovery-resource.dat is used as bonus data for imgdiff,
+don't build it if we are going to use bsdiff.
+
+Change-Id: I93a662a358ee79f56b8acd4329eedd166a176c66
+(cherry picked from commit 543d7376be045ccdfb20cc14b3757500a026e326)
+---
+ core/Makefile                | 5 ++++-
+ tools/releasetools/common.py | 8 ++++++--
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 185949a..3270372 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -927,7 +927,7 @@ endif
+ #   b) We build a single image that contains boot and recovery both
+ #      (BOARD_USES_RECOVERY_AS_BOOT = true).
+ 
+-ifeq (,$(filter true, $(BOARD_USES_FULL_RECOVERY_IMAGE) $(BOARD_USES_RECOVERY_AS_BOOT)))
++ifeq (,$(filter true, $(BOARD_USES_FULL_RECOVERY_IMAGE) $(BOARD_USES_RECOVERY_AS_BOOT) $(TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK)))
+ # Named '.dat' so we don't attempt to use imgdiff for patching it.
+ RECOVERY_RESOURCE_ZIP := $(TARGET_OUT)/etc/recovery-resource.dat
+ else
+@@ -1919,6 +1919,9 @@ endif
+ ifeq ($(BOARD_USES_FULL_RECOVERY_IMAGE),true)
+ 	$(hide) echo "full_recovery_image=true" >> $(zip_root)/META/misc_info.txt
+ endif
++ifeq ($(TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK),true)
++	$(hide) echo "no_gzip_recovery_ramdisk=true" >> $(zip_root)/META/misc_info.txt
++endif
+ 	$(call generate-userimage-prop-dictionary, $(zip_root)/META/misc_info.txt)
+ ifneq ($(INSTALLED_RECOVERYIMAGE_TARGET),)
+ 	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
+index 8b2ee31..752fe7a 100644
+--- a/tools/releasetools/common.py
++++ b/tools/releasetools/common.py
+@@ -1644,14 +1644,18 @@ def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
+ 
+   full_recovery_image = info_dict.get("full_recovery_image", None) == "true"
+   system_root_image = info_dict.get("system_root_image", None) == "true"
++  use_bsdiff = info_dict.get("no_gzip_recovery_ramdisk", None) == "true"
+ 
+   if full_recovery_image:
+     output_sink("etc/recovery.img", recovery_img.data)
+ 
+   else:
+-    diff_program = ["imgdiff"]
++    if use_bsdiff:
++      diff_program = ["bsdiff"]
++    else:
++      diff_program = ["imgdiff"]
+     path = os.path.join(input_dir, "SYSTEM", "etc", "recovery-resource.dat")
+-    if os.path.exists(path):
++    if os.path.exists(path) and not use_bsdiff:
+       diff_program.append("-b")
+       diff_program.append(path)
+       bonus_args = "-b /system/etc/recovery-resource.dat"
+-- 
+2.7.4
+

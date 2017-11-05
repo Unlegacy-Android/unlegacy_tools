@@ -1,0 +1,28 @@
+From 4b8b233fd9772d3161059e8006c5144b8102e3a9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?D=2E=20Andrei=20M=C4=83ce=C8=99?= <dmaces@nd.edu>
+Date: Sun, 23 Oct 2016 03:08:52 -0400
+Subject: [PATCH 7/8] SF: HWC1: Propagate the OMAP_ENHANCEMENT flag
+
+Change-Id: I96fe0afc740abae79c6ebc7b7af1e3d2b22b4704
+---
+ services/surfaceflinger/Android.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/services/surfaceflinger/Android.mk b/services/surfaceflinger/Android.mk
+index cb292ef..b9abf5c 100644
+--- a/services/surfaceflinger/Android.mk
++++ b/services/surfaceflinger/Android.mk
+@@ -54,6 +54,10 @@ else
+     LOCAL_SRC_FILES += \
+         SurfaceFlinger_hwc1.cpp \
+         DisplayHardware/HWComposer_hwc1.cpp
++
++    ifeq ($(OMAP_ENHANCEMENT),true)
++        LOCAL_CFLAGS += -DOMAP_ENHANCEMENT
++    endif
+ endif
+ 
+ ifeq ($(TARGET_FORCE_SCREENSHOT_CPU_PATH),true)
+-- 
+2.7.4
+

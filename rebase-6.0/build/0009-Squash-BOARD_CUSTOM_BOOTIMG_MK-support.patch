@@ -1,0 +1,179 @@
+From c10fe97fb7b077e6fe1f449711b721b64772c444 Mon Sep 17 00:00:00 2001
+From: Ricardo Cerqueira <ricardo@cyngn.com>
+Date: Wed, 5 Nov 2014 21:30:23 +0000
+Subject: [PATCH 09/12] Squash BOARD_CUSTOM_BOOTIMG_MK support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Simplified version of the previous implementation. Recovery's ramdisk
+is spun off from the main recovery target again to allow overriding
+just the image-generation step
+
+Change-Id: Ie49620e5e438222d2b80efeefcde4d136e346b90
+Signed-off-by: D. Andrei Măceș <dmaces@nd.edu>
+---
+ core/Makefile | 65 ++++++++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 47 insertions(+), 18 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index a895cb2..7653b6c 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -511,6 +511,7 @@ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES) $(BOOT_S
+ 	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
+ 	$(BOOT_SIGNER) /boot $@ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $@
+ 	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE))
++	@echo -e ${CL_CYN}"Made boot image: $@"${CL_RST}
+ 
+ .PHONY: bootimage-nodeps
+ bootimage-nodeps: $(MKBOOTIMG) $(BOOT_SIGNER)
+@@ -518,8 +519,11 @@ bootimage-nodeps: $(MKBOOTIMG) $(BOOT_SIGNER)
+ 	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(INSTALLED_BOOTIMAGE_TARGET)
+ 	$(BOOT_SIGNER) /boot $(INSTALLED_BOOTIMAGE_TARGET) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $(INSTALLED_BOOTIMAGE_TARGET)
+ 	$(hide) $(call assert-max-image-size,$(INSTALLED_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE))
++	@echo -e ${CL_INS}"Made boot image: $@"${CL_RST}
+ 
+-else ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)) # PRODUCT_SUPPORTS_BOOT_SIGNER != true
++else ifndef BOARD_CUSTOM_BOOTIMG_MK
++
++  ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)) # PRODUCT_SUPPORTS_BOOT_SIGNER != true
+ 
+ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES) $(VBOOT_SIGNER)
+ 	$(call pretty,"Target boot image: $@")
+@@ -534,20 +538,23 @@ bootimage-nodeps: $(MKBOOTIMG) $(VBOOT_SIGNER)
+ 	$(VBOOT_SIGNER) $(FUTILITY) $(INSTALLED_BOOTIMAGE_TARGET).unsigned $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbpubk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbprivk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_SUBKEY).vbprivk $(INSTALLED_BOOTIMAGE_TARGET).keyblock $(INSTALLED_BOOTIMAGE_TARGET)
+ 	$(hide) $(call assert-max-image-size,$(INSTALLED_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE))
+ 
+-else # PRODUCT_SUPPORTS_VBOOT != true
++  else # PRODUCT_SUPPORTS_VBOOT != true
+ 
+ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES)
+ 	$(call pretty,"Target boot image: $@")
+ 	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
+ 	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE))
++	@echo -e ${CL_CYN}"Made boot image: $@"${CL_RST}
+ 
+ .PHONY: bootimage-nodeps
+ bootimage-nodeps: $(MKBOOTIMG)
+ 	@echo "make $@: ignoring dependencies"
+ 	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(INSTALLED_BOOTIMAGE_TARGET)
+ 	$(hide) $(call assert-max-image-size,$(INSTALLED_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE))
++	@echo -e ${CL_INS}"Made boot image: $@"${CL_RST}
+ 
+-endif # TARGET_BOOTIMAGE_USE_EXT2
++  endif # PRODUCT_SUPPORTS_VBOOT
++endif # PRODUCT_SUPPORTS_BOOT_SIGNER / BOARD_CUSTOM_BOOTIMG_MK
+ 
+ else	# TARGET_NO_KERNEL
+ # HACK: The top-level targets depend on the bootimage.  Not all targets
+@@ -780,6 +787,7 @@ recovery_sepolicy := $(call intermediates-dir-for,ETC,sepolicy.recovery)/sepolic
+ recovery_kernel := $(INSTALLED_KERNEL_TARGET) # same as a non-recovery system
+ recovery_ramdisk := $(PRODUCT_OUT)/ramdisk-recovery.img
+ recovery_build_prop := $(intermediate_system_build_prop)
++recovery_uncompressed_ramdisk := $(PRODUCT_OUT)/ramdisk-recovery.cpio
+ recovery_resources_common := $(call include-path-for, recovery)/res
+ 
+ # Set recovery_density to the density bucket of the device.
+@@ -866,12 +874,12 @@ $(RECOVERY_INSTALL_OTA_KEYS): $(OTA_PUBLIC_KEYS) $(DUMPKEY_JAR) $(extra_keys)
+ RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
+ # $(1): output file
+ define build-recoveryimage-target
+-  @echo ----- Making recovery image ------
++  @echo -e ${CL_CYN}"----- Making recovery image ------"${CL_RST}
+   $(hide) mkdir -p $(TARGET_RECOVERY_OUT)
+   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/etc $(TARGET_RECOVERY_ROOT_OUT)/tmp
+-  @echo Copying baseline ramdisk...
++  @echo -e ${CL_CYN}"Copying baseline ramdisk..."${CL_RST}
+   $(hide) rsync -a $(TARGET_ROOT_OUT) $(TARGET_RECOVERY_OUT) # "cp -Rf" fails to overwrite broken symlinks on Mac.
+-  @echo Modifying ramdisk contents...
++  @echo -e ${CL_CYN}"Modifying ramdisk contents..."${CL_RST}
+   $(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/init*.rc
+   $(hide) cp -f $(recovery_initrc) $(TARGET_RECOVERY_ROOT_OUT)/
+   $(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sepolicy
+@@ -889,27 +897,37 @@ define build-recoveryimage-target
+   $(hide) cat $(INSTALLED_DEFAULT_PROP_TARGET) $(recovery_build_prop) \
+           > $(TARGET_RECOVERY_ROOT_OUT)/default.prop
+   $(hide) $(MKBOOTFS) -d $(TARGET_OUT) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $(recovery_ramdisk)
+-  $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)), \
+-    $(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(1).unsigned, \
+-    $(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(1) --id > $(RECOVERYIMAGE_ID_FILE))
+-  $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_BOOT_SIGNER)),\
+-    $(BOOT_SIGNER) /recovery $(1) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $(1))
+-  $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)), \
+-    $(VBOOT_SIGNER) $(FUTILITY) $(1).unsigned $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbpubk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbprivk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_SUBKEY).vbprivk $(1).keyblock $(1))
+-  $(hide) $(call assert-max-image-size,$(1),$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))
+-  @echo ----- Made recovery image: $(1) --------
++
++  $(if $(BOARD_CUSTOM_BOOTIMG_MK),,
++    $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)), \
++      $(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(1).unsigned, \
++      $(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(1) --id > $(RECOVERYIMAGE_ID_FILE))
++    $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_BOOT_SIGNER)),\
++      $(BOOT_SIGNER) /recovery $(1) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $(1))
++    $(if $(filter true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT)), \
++      $(VBOOT_SIGNER) $(FUTILITY) $(1).unsigned $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbpubk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_KEY).vbprivk $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VBOOT_SIGNING_SUBKEY).vbprivk $(1).keyblock $(1))
++    $(hide) $(call assert-max-image-size,$(1),$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))
++    @echo -e ${CL_CYN}"Made recovery image: $@"${CL_RST})
+ endef
+ 
+-$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
++$(recovery_uncompressed_ramdisk): $(MINIGZIP) $(recovery_ramdisk)
++	@echo -e ${CL_CYN}"----- Making uncompressed recovery ramdisk ------"${CL_RST}
++	$(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) > $@
++
++$(recovery_ramdisk): $(MKBOOTFS) $(MINIGZIP) \
+ 		$(INSTALLED_RAMDISK_TARGET) \
+ 		$(INSTALLED_BOOTIMAGE_TARGET) \
+ 		$(INTERNAL_RECOVERYIMAGE_FILES) \
+-		$(recovery_initrc) $(recovery_sepolicy) $(recovery_kernel) \
++		$(recovery_initrc) $(recovery_sepolicy) \
+ 		$(INSTALLED_2NDBOOTLOADER_TARGET) \
+ 		$(recovery_build_prop) $(recovery_resource_deps) \
+ 		$(recovery_fstab) \
+ 		$(RECOVERY_INSTALL_OTA_KEYS)
++
++ifndef BOARD_CUSTOM_BOOTIMG_MK
++$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) $(recovery_ramdisk) $(recovery_kernel)
+ 		$(call build-recoveryimage-target, $@)
++endif # BOARD_CUSTOM_BOOTIMG_MK
+ 
+ $(RECOVERY_RESOURCE_ZIP): $(INSTALLED_RECOVERYIMAGE_TARGET)
+ 	$(hide) mkdir -p $(dir $@)
+@@ -935,6 +953,11 @@ ifeq ($(BOARD_NAND_SPARE_SIZE),)
+ BOARD_NAND_SPARE_SIZE := 64
+ endif
+ 
++ifdef BOARD_CUSTOM_BOOTIMG_MK
++include $(BOARD_CUSTOM_BOOTIMG_MK)
++endif
++
++
+ # -----------------------------------------------------------------
+ # system image
+ #
+@@ -1033,7 +1056,7 @@ $(RECOVERY_FROM_BOOT_PATCH): $(INSTALLED_RECOVERYIMAGE_TARGET) \
+                              $(INSTALLED_BOOTIMAGE_TARGET) \
+ 			     $(HOST_OUT_EXECUTABLES)/imgdiff \
+ 	                     $(HOST_OUT_EXECUTABLES)/bsdiff
+-	@echo "Construct recovery from boot"
++	@echo -e ${CL_CYN}"Construct recovery from boot"${CL_RST}
+ 	mkdir -p $(dir $@)
+ 	PATH=$(HOST_OUT_EXECUTABLES):$$PATH $(HOST_OUT_EXECUTABLES)/imgdiff $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_RECOVERYIMAGE_TARGET) $@
+ endif
+@@ -1467,6 +1490,12 @@ endif
+ 	@# Contents of the data image
+ 	$(hide) $(call package_files-copy-root, \
+ 		$(TARGET_OUT_DATA),$(zip_root)/DATA)
++ifdef BOARD_CUSTOM_BOOTIMG
++	@# Prebuilt boot images
++	$(hide) mkdir -p $(zip_root)/BOOTABLE_IMAGES
++	$(hide) $(ACP) $(INSTALLED_BOOTIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
++	$(hide) $(ACP) $(INSTALLED_RECOVERYIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
++endif
+ ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+ 	@# Contents of the vendor image
+ 	$(hide) $(call package_files-copy-root, \
+-- 
+2.7.4
+

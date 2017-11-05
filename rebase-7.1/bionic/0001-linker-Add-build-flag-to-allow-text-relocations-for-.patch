@@ -1,0 +1,49 @@
+From 921489fac01de022a76cab87667d56c18b750dfc Mon Sep 17 00:00:00 2001
+From: Kyle Repinski <repinski23@gmail.com>
+Date: Sat, 27 Aug 2016 20:19:20 -0500
+Subject: [PATCH] linker: Add build flag to allow text relocations for platform
+ libs.
+
+Change-Id: I2baf6fc092dff1f49ffeecf16faafd7ac35b6491
+---
+ linker/Android.mk | 4 ++++
+ linker/linker.cpp | 6 ++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/linker/Android.mk b/linker/Android.mk
+index 4a4ca5c..e5b2d1c 100644
+--- a/linker/Android.mk
++++ b/linker/Android.mk
+@@ -54,6 +54,10 @@ ifeq ($(TARGET_IS_64_BIT),true)
+ LOCAL_CPPFLAGS += -DTARGET_IS_64_BIT
+ endif
+ 
++ifeq ($(TARGET_NEEDS_PLATFORM_TEXTRELS),true)
++LOCAL_CFLAGS += -DALLOW_PLATFORM_TEXTRELS
++endif
++
+ # We need to access Bionic private headers in the linker.
+ LOCAL_CFLAGS += -I$(LOCAL_PATH)/../libc/
+ 
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index a043b85..9ecf74c 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -3952,8 +3952,14 @@ bool soinfo::link_image(const soinfo_list_t& global_group, const soinfo_list_t&
+ 
+ #if !defined(__LP64__)
+   if (has_text_relocations) {
++#ifndef ALLOW_PLATFORM_TEXTRELS
+     // Fail if app is targeting sdk version > 22
+     if (get_application_target_sdk_version() > 22) {
++#else
++    // Some devices require an exception for platform libs (e.g. vendor libs)
++    if (get_application_target_sdk_version() != __ANDROID_API__ &&
++        get_application_target_sdk_version() > 22) {
++#endif
+       PRINT("%s: has text relocations", get_realpath());
+       DL_ERR("%s: has text relocations", get_realpath());
+       return false;
+-- 
+2.7.4
+

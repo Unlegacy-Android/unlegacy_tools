@@ -1,0 +1,57 @@
+From 4a5df2705af995d5310dd60b57381542bbd26012 Mon Sep 17 00:00:00 2001
+From: Zhao Wei Liew <zhaoweiliew@gmail.com>
+Date: Thu, 8 Sep 2016 22:17:15 +0800
+Subject: [PATCH 8/8] init.io.rc: Mount BFQIO cgroup as /dev/bfqio
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+AOSP doesn't mount cgroups in /sys/fs/cgroups anymore.
+Follow the convention and mount BFQIO cgroups in /dev/bfqio.
+
+Also, remove the ioprio write as we only need ioprio_class
+when dealing with 2 different priorities.
+
+Change-Id: I8ff6c601547c445368e80832e736bb926d86b4d1
+Signed-off-by: D. Andrei Măceș <dmaces@nd.edu>
+---
+ rootdir/init.io.rc | 22 ++++++++++------------
+ 1 file changed, 10 insertions(+), 12 deletions(-)
+
+diff --git a/rootdir/init.io.rc b/rootdir/init.io.rc
+index 4830915..7c50115 100644
+--- a/rootdir/init.io.rc
++++ b/rootdir/init.io.rc
+@@ -1,19 +1,17 @@
+ on init
+     # Set up the BFQIO hierarchy
+-    chmod 0755 /sys/fs/cgroup
+-    mkdir /sys/fs/cgroup/bfqio 0755 root system
+-    mount cgroup none /sys/fs/cgroup/bfqio bfqio
+-    chown root system /sys/fs/cgroup/bfqio/tasks
+-    chmod 0664 /sys/fs/cgroup/bfqio/tasks
+-    chmod 0220 /sys/fs/cgroup/bfqio/cgroup.event_control
++    mkdir /dev/bfqio 0755 root system
++    mount cgroup none /dev/bfqio bfqio
++    chown root system /dev/bfqio/tasks
++    chmod 0664 /dev/bfqio/tasks
++    chmod 0220 /dev/bfqio/cgroup.event_control
+ 
+     # Soft realtime class for display service
+-    mkdir /sys/fs/cgroup/bfqio/rt-display 0755 root system
+-    write /sys/fs/cgroup/bfqio/rt-display/bfqio.ioprio_class 1
+-    write /sys/fs/cgroup/bfqio/rt-display/bfqio.ioprio 7
+-    chown system system /sys/fs/cgroup/bfqio/rt-display/tasks
+-    chmod 0664 /sys/fs/cgroup/bfqio/rt-display/tasks
+-    chmod 0220 /sys/fs/cgroup/bfqio/rt-display/cgroup.event_control
++    mkdir /dev/bfqio/rt-display 0755 root system
++    write /dev/bfqio/rt-display/bfqio.ioprio_class 1
++    chown system system /dev/bfqio/rt-display/tasks
++    chmod 0664 /dev/bfqio/rt-display/tasks
++    chmod 0220 /dev/bfqio/rt-display/cgroup.event_control
+ 
+ # Configure IO scheduler
+ on property:sys.io.scheduler=*
+-- 
+2.7.4
+

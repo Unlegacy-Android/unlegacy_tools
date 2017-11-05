@@ -1,0 +1,53 @@
+From 0c39763a3681ee86684430950699f870a092335e Mon Sep 17 00:00:00 2001
+From: Mykola Ostrovskyy <mykola@ti.com>
+Date: Tue, 8 Apr 2014 14:15:42 -0500
+Subject: [PATCH 5/8] HWComposer: Prevent FB de-allocation with HWC 1.1+
+
+Even though HWComposer will not use FB HAL functionality when
+working with newer HWC API, the FB instance should be keept alive
+to prevent destruction of flip chain.
+
+Change-Id: I606873fc5d03f676d3a256269e8503d5de5df43e
+Signed-off-by: Mykola Ostrovskyy <mykola@ti.com>
+---
+ services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp b/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
+index ef41658..0ecc440 100644
+--- a/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
+@@ -111,6 +111,10 @@ HWComposer::HWComposer(
+     int fberr = loadFbHalModule();
+     loadHwcModule();
+ 
++#ifdef OMAP_ENHANCEMENT
++    // FB HAL must stay open independent of HWC API version. Closing FB HAL will
++    // result in destruction of flip chain and de-allocation of framebuffer.
++#else
+     if (mFbDev && mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
+         // close FB HAL if we don't needed it.
+         // FIXME: this is temporary until we're not forced to open FB HAL
+@@ -118,6 +122,7 @@ HWComposer::HWComposer(
+         framebuffer_close(mFbDev);
+         mFbDev = NULL;
+     }
++#endif
+ 
+     // If we have no HWC, or a pre-1.1 HWC, an FB dev is mandatory.
+     if ((!mHwc || !hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1))
+@@ -166,7 +171,11 @@ HWComposer::HWComposer(
+         }
+     }
+ 
++#ifdef OMAP_ENHANCEMENT
++    if (!mHwc || !hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
++#else
+     if (mFbDev) {
++#endif
+         ALOG_ASSERT(!(mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)),
+                 "should only have fbdev if no hwc or hwc is 1.0");
+ 
+-- 
+2.7.4
+

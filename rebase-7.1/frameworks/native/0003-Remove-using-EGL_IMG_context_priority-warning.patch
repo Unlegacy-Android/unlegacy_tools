@@ -1,0 +1,27 @@
+From b7a41c00585487cee8969dc1d1d234c4edfc8fce Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Mon, 12 Oct 2015 14:22:37 +0200
+Subject: [PATCH 3/8] Remove "using EGL_IMG_context_priority" warning
+
+Since surfaceflinger is compiled with -Werror, the warning breaks the build.
+
+Change-Id: I72483515e6fcff70360e31aabb313f1483c87d64
+---
+ services/surfaceflinger/RenderEngine/RenderEngine.cpp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/services/surfaceflinger/RenderEngine/RenderEngine.cpp b/services/surfaceflinger/RenderEngine/RenderEngine.cpp
+index d6a032f..b21f0cd 100644
+--- a/services/surfaceflinger/RenderEngine/RenderEngine.cpp
++++ b/services/surfaceflinger/RenderEngine/RenderEngine.cpp
+@@ -83,7 +83,6 @@ RenderEngine* RenderEngine::create(EGLDisplay display, int hwcFormat) {
+             EGL_CONTEXT_CLIENT_VERSION, contextClientVersion,      // MUST be first
+ #ifdef EGL_IMG_context_priority
+ #ifdef HAS_CONTEXT_PRIORITY
+-#warning "using EGL_IMG_context_priority"
+             EGL_CONTEXT_PRIORITY_LEVEL_IMG, EGL_CONTEXT_PRIORITY_HIGH_IMG,
+ #endif
+ #endif
+-- 
+2.7.4
+

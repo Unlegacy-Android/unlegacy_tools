@@ -1,0 +1,45 @@
+From bab7574975d0cff5993ce736919f9746f80e1520 Mon Sep 17 00:00:00 2001
+From: Anthony King <anthonydking@gmail.com>
+Date: Sat, 7 Feb 2015 21:19:03 -0600
+Subject: [PATCH 17/20] build: use the system's ccache by default
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+* ccache gets updated semi-frequently and some builders would like
+  to be able to take advantage of new features without having to
+  rely on the prebuilt version getting updated
+
+* If a build system has ccache installed already, use that version
+  instead of the prebuilt
+
+Change-Id: I8988c8a25fab3694d84633f957c2b92ce84cf69e
+Signed-off-by: Ícaro Hoff <icarohoff@gmail.com>
+---
+ core/ccache.mk | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/core/ccache.mk b/core/ccache.mk
+index 7b10373..b682aff 100644
+--- a/core/ccache.mk
++++ b/core/ccache.mk
+@@ -38,8 +38,14 @@ ifneq ($(filter-out false,$(USE_CCACHE)),)
+   # See http://petereisentraut.blogspot.com/2011/09/ccache-and-clang-part-2.html
+   export CCACHE_CPP2 := true
+ 
+-  CCACHE_HOST_TAG := $(HOST_PREBUILT_TAG)
+-  ccache := prebuilts/misc/$(CCACHE_HOST_TAG)/ccache/ccache
++  # Detect if the system already has ccache installed to use instead of the prebuilt
++  ccache := $(shell which ccache)
++
++  ifeq ($(ccache),)
++    CCACHE_HOST_TAG := $(HOST_PREBUILT_TAG)
++    ccache := prebuilts/misc/$(CCACHE_HOST_TAG)/ccache/ccache
++  endif
++
+   # Check that the executable is here.
+   ccache := $(strip $(wildcard $(ccache)))
+   ifdef ccache
+-- 
+2.7.4
+
