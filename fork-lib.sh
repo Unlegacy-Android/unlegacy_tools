@@ -1,6 +1,6 @@
 #!/bin/sh
 
-AOSP=https://android.googlesource.com; SAUCE=~/android/$BRANCH
+AOSP=https://android.googlesource.com; SAUCE=`cd ..;pwd`
 UA=Unlegacy-Android; GH=https://github.com; CANARY=`echo $AOSP_FORKS| cut -d\  -f1`
 
 cd $SAUCE && echo "Using $SAUCE" || echo "Using $PWD"
