@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2d77819e_6b160b82",
+        "filename": "fork-lib.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2017-12-22T14:26:51Z",
+      "side": 1,
+      "message": "This string should be some folder location; commands here won\u0027t work well/would be problematic (see line 6).\n\nAs of now, if you type one of unlegacy_tools/{m,n,o}-forked.sh, it will fall back to using current folder (after trying ~/android/$BRANCH, which was Andi\u0027s preferred location in the past).\n\nSo, as long as you\u0027re in $ANDROID_TOP and not in ($ANDROID_TOP/unlegacy_tools), it will work as expected. Do we need to make sure ./{m,n,o}-forked.sh also works (within unlegacy_tools)?",
+      "range": {
+        "startLine": 3,
+        "startChar": 46,
+        "endLine": 3,
+        "endChar": 55
+      },
+      "revId": "9464fdc9270ec4b5a14e6191997159d074500f61",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
