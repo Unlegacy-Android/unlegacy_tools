@@ -9,7 +9,7 @@ AOSP_FORKS="build/make build/soong bionic
 	hardware/broadcom/wlan hardware/qcom/audio
 	hardware/qcom/bt hardware/qcom/display
 	hardware/qcom/gps hardware/qcom/keymaster
-	hardware/qcom/media"
+	hardware/qcom/media hardware/qcom/power"
 
 . `dirname $0`/fork-lib.sh
 
