@@ -1,6 +1,6 @@
 #!/bin/sh
 
-FALLBR=aosp-8.0; BRANCH=aosp-8.1; TRACK=oreo-m2-release
+FALLBR=aosp-8.0; BRANCH=aosp-8.1; TRACK=oreo-m4-s2-release
 
 AOSP_FORKS="build/make build/soong bionic
 	hardware/interfaces hardware/ril
