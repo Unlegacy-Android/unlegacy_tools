@@ -3,7 +3,7 @@
 BRANCH=aosp-9.0; TRACK=pie-release
 
 AOSP_FORKS="build/make build/soong bionic hardware/ril
-	system/bt system/core system/nfc system/sepolicy
+	external/perfetto system/bt system/core system/sepolicy
 	frameworks/av frameworks/base frameworks/native
 	hardware/broadcom/wlan hardware/qcom/audio
 	hardware/qcom/bt hardware/qcom/display
