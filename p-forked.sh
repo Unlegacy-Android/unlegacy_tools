@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BRANCH=aosp-9.0; TRACK=pie-qpr2-release
+BRANCH=aosp-9.0; TRACK=pie-qpr3-release
 
 AOSP_FORKS="build/make build/soong bionic hardware/ril
 	external/perfetto system/bt system/core system/sepolicy
